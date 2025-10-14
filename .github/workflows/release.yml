@@ -41,30 +41,30 @@ jobs:
           # Build for Linux x64
           pkg dist/cli/index.js \
             --targets node18-linux-x64 \
-            --output binaries/tunnel-linux-x64
+            --output binaries/tunl-linux-x64
 
           # Build for macOS x64
           pkg dist/cli/index.js \
             --targets node18-macos-x64 \
-            --output binaries/tunnel-macos-x64
+            --output binaries/tunl-macos-x64
 
           # Build for macOS ARM64
           pkg dist/cli/index.js \
             --targets node18-macos-arm64 \
-            --output binaries/tunnel-macos-arm64
+            --output binaries/tunl-macos-arm64
 
           # Build for Windows x64
           pkg dist/cli/index.js \
             --targets node18-win-x64 \
-            --output binaries/tunnel-win-x64.exe
+            --output binaries/tunl-win-x64.exe
 
       - name: Compress binaries
         run: |
           cd binaries
-          tar -czf tunnel-linux-x64.tar.gz tunnel-linux-x64
-          tar -czf tunnel-macos-x64.tar.gz tunnel-macos-x64
-          tar -czf tunnel-macos-arm64.tar.gz tunnel-macos-arm64
-          zip tunnel-win-x64.zip tunnel-win-x64.exe
+          tar -czf tunl-linux-x64.tar.gz tunl-linux-x64
+          tar -czf tunl-macos-x64.tar.gz tunl-macos-x64
+          tar -czf tunl-macos-arm64.tar.gz tunl-macos-arm64
+          zip tunl-win-x64.zip tunl-win-x64.exe
           cd ..
 
       - name: Get version from tag
@@ -75,14 +75,14 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            binaries/tunnel-linux-x64
-            binaries/tunnel-macos-x64
-            binaries/tunnel-macos-arm64
-            binaries/tunnel-win-x64.exe
-            binaries/tunnel-linux-x64.tar.gz
-            binaries/tunnel-macos-x64.tar.gz
-            binaries/tunnel-macos-arm64.tar.gz
-            binaries/tunnel-win-x64.zip
+            binaries/tunl-linux-x64
+            binaries/tunl-macos-x64
+            binaries/tunl-macos-arm64
+            binaries/tunl-win-x64.exe
+            binaries/tunl-linux-x64.tar.gz
+            binaries/tunl-macos-x64.tar.gz
+            binaries/tunl-macos-arm64.tar.gz
+            binaries/tunl-win-x64.zip
           draft: false
           prerelease: false
           generate_release_notes: true
