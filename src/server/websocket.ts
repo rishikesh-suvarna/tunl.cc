@@ -1,5 +1,3 @@
-// src/server/websocket.ts
-
 import crypto from 'crypto';
 import WebSocket from 'ws';
 import { MESSAGE_TYPES, MessageType } from '../shared/constants';
