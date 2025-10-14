@@ -5,6 +5,12 @@
   "bin": {
     "tunl": "./dist/cli/index.js"
   },
+  "files": [
+    "dist",
+    "bin/tunl",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc",
     "build:watch": "tsc --watch",
