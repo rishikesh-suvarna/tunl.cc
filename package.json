@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "main": "./dist/server/index.js",
   "bin": {
-    "tunnel": "./dist/client/index.js"
+    "tunl": "./dist/cli/index.js"
   },
   "scripts": {
     "build": "tsc",
