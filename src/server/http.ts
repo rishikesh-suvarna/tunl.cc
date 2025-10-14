@@ -41,7 +41,7 @@ function forwardRequest(
   res: Response,
   tunnel: TunnelInfo,
   tunnelManager: TunnelManager,
-  subdomain: string
+  _subdomain: string
 ): void {
   const requestId = crypto.randomBytes(16).toString('hex');
 
@@ -63,6 +63,7 @@ function forwardRequest(
   try {
     tunnel.ws.send(JSON.stringify(requestData));
   } catch (err) {
+    console.error('Error forwarding request:', err);
     clearTimeout(timeout);
     tunnelManager.pendingRequestsMap.delete(requestId);
     res.status(502).send('Bad Gateway');
