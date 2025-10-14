@@ -21,7 +21,7 @@
     "clean": "rm -rf dist"
   },
   "author": "Rishikesh S",
-  "license": "ISC",
+  "license": "MIT",
   "description": "",
   "dependencies": {
     "dotenv": "^17.2.3",
@@ -38,5 +38,13 @@
     "nodemon": "^3.1.10",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
-  }
+  },
+  "keywords": [
+    "tunnel",
+    "cli",
+    "proxy",
+    "http",
+    "https",
+    "websocket"
+  ]
 }
