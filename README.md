@@ -7,7 +7,7 @@ A simple tunneling service to expose your localhost to the internet.
 ### via NPM
 
 ```bash
-npm install -g @rishikesh-suvarna/tunl.cc
+npm install -g tunl.cc
 ```
 
 ### via Binary
