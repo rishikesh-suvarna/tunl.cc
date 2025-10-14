@@ -1,0 +1,96 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test || true
+
+      - name: Build TypeScript
+        run: npm run build
+
+      - name: Install pkg globally
+        run: npm install -g pkg
+
+      - name: Build binaries
+        run: |
+          mkdir -p binaries
+
+          # Build for Linux x64
+          pkg dist/cli/index.js \
+            --targets node18-linux-x64 \
+            --output binaries/tunnel-linux-x64
+
+          # Build for macOS x64
+          pkg dist/cli/index.js \
+            --targets node18-macos-x64 \
+            --output binaries/tunnel-macos-x64
+
+          # Build for macOS ARM64
+          pkg dist/cli/index.js \
+            --targets node18-macos-arm64 \
+            --output binaries/tunnel-macos-arm64
+
+          # Build for Windows x64
+          pkg dist/cli/index.js \
+            --targets node18-win-x64 \
+            --output binaries/tunnel-win-x64.exe
+
+      - name: Compress binaries
+        run: |
+          cd binaries
+          tar -czf tunnel-linux-x64.tar.gz tunnel-linux-x64
+          tar -czf tunnel-macos-x64.tar.gz tunnel-macos-x64
+          tar -czf tunnel-macos-arm64.tar.gz tunnel-macos-arm64
+          zip tunnel-win-x64.zip tunnel-win-x64.exe
+          cd ..
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            binaries/tunnel-linux-x64
+            binaries/tunnel-macos-x64
+            binaries/tunnel-macos-arm64
+            binaries/tunnel-win-x64.exe
+            binaries/tunnel-linux-x64.tar.gz
+            binaries/tunnel-macos-x64.tar.gz
+            binaries/tunnel-macos-arm64.tar.gz
+            binaries/tunnel-win-x64.zip
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          name: Release ${{ steps.get_version.outputs.VERSION }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to NPM
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
