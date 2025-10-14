@@ -1,4 +1,4 @@
-import { DEBUG } from '../config/app.config';
+import { DEBUG } from '../../config/app.config';
 
 export class Logger {
   private context: string;

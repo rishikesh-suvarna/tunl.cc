@@ -1,4 +1,4 @@
-// src/client/cli.ts
+import { TUNNEL_SERVER } from '../config/app.config';
 
 export interface CliConfig {
   localPort: number;
@@ -29,9 +29,13 @@ export function parseArgs(): CliConfig {
     process.exit(1);
   }
 
+  console.log(`Localport: ${localPort}`);
+  console.log(`Subdomain: ${args[1] || 'random'}`);
+  console.log(`Tunnel Server: ${TUNNEL_SERVER || 'ws://localhost:3000'}`);
+
   return {
     localPort,
     subdomain: args[1] || null,
-    tunnelServer: process.env.TUNNEL_SERVER || 'ws://localhost:3000',
+    tunnelServer: TUNNEL_SERVER || 'ws://localhost:3000',
   };
 }

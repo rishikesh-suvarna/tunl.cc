@@ -17,3 +17,4 @@ export const PORT = parseInt(getEnvVar('PORT', '9000'), 10);
 export const BASE_DOMAIN = getEnvVar('BASE_DOMAIN', 'localhost:9000');
 export const HTTPS = getEnvVar('HTTPS', 'false') === 'true';
 export const DEBUG = getEnvVar('DEBUG', 'false') === 'true';
+export const TUNNEL_SERVER = getEnvVar('TUNNEL_SERVER', `ws://${BASE_DOMAIN}`);

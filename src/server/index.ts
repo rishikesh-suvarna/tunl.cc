@@ -1,8 +1,8 @@
 import express from 'express';
 import http from 'http';
 import WebSocket from 'ws';
+import { BASE_DOMAIN, HTTPS, PORT } from '../config/app.config';
 import { ServerConfig } from '../shared/types';
-import { BASE_DOMAIN, HTTPS, PORT } from './config/app.config';
 import { setupHttpServer } from './http';
 import { TunnelManager } from './tunnel-manager';
 import { Logger } from './utils/logger';
