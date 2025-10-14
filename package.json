@@ -1,7 +1,10 @@
 {
   "name": "tunl.cc",
-  "version": "1.0.0",
-  "main": "index.js",
+  "version": "0.0.1",
+  "main": "./dist/server/index.js",
+  "bin": {
+    "tunnel": "./dist/client/index.js"
+  },
   "scripts": {
     "build": "tsc",
     "build:watch": "tsc --watch",
@@ -17,7 +20,7 @@
     "lint:fix": "eslint src --ext .ts --fix",
     "clean": "rm -rf dist"
   },
-  "author": "",
+  "author": "Rishikesh S",
   "license": "ISC",
   "description": "",
   "dependencies": {
