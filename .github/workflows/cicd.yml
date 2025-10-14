@@ -54,7 +54,7 @@ jobs:
           key: ${{ secrets.DO_SSH_KEY }}
           port: ${{ secrets.DO_PORT }}
           script: |
-            cd /var/www/tunl
+            cd /srv/clients/tunl.cc
             git pull origin main
             yarn install --frozen-lockfile
             yarn build
