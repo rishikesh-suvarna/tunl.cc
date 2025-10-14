@@ -55,6 +55,7 @@ jobs:
           port: ${{ secrets.DO_PORT }}
           script: |
             cd /srv/clients/tunl.cc
+            nvm use 20
             git pull origin main
             yarn install --frozen-lockfile
             yarn build
