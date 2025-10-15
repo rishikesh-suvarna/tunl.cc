@@ -52,7 +52,7 @@ jobs:
           cd ..
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: linux-windows-binaries
           path: binaries/
@@ -112,7 +112,7 @@ jobs:
           cd ..
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: macos-binaries
           path: binaries/
@@ -137,13 +137,13 @@ jobs:
         run: corepack enable
 
       - name: Download Linux/Windows artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: linux-windows-binaries
           path: binaries
 
       - name: Download macOS artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: macos-binaries
           path: binaries
