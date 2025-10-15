@@ -23,7 +23,6 @@ export function forwardToLocal(
   // Decode base64 body if present
   let requestBody: Buffer | undefined;
   if (body) {
-    console.log(`Body: ${body}`);
     requestBody = Buffer.from(body, 'base64');
     cleanHeaders['content-length'] = requestBody.length.toString();
   }
