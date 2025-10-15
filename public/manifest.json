@@ -1,0 +1,21 @@
+{
+  "name": "tunl.cc - Localhost Tunneling Service",
+  "short_name": "tunl.cc",
+  "description": "Fast, secure, and simple tunneling service for developers",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0B0326",
+  "theme_color": "#0B0326",
+  "icons": [
+    {
+      "src": "/assets/images/common/logo-icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/images/common/logo-icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
