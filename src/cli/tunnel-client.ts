@@ -104,7 +104,7 @@ export class TunnelClient {
   }
 
   private handleRequest(msg: RequestMessage): void {
-    console.log(`${msg.method} ${msg.path}`);
+    console.log(`${msg.method} ${msg.path} -> localhost:${this.localPort}`);
 
     forwardToLocal(this.localPort, msg, (response) => {
       if (!this.ws) return;
@@ -116,6 +116,8 @@ export class TunnelClient {
         headers: response.headers,
         body: response.body,
       };
+
+      console.log(`  Responded with ${response.statusCode}\n`);
 
       this.ws.send(JSON.stringify(responseMsg));
     });
