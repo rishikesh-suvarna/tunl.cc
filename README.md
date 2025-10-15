@@ -110,7 +110,7 @@ npm test
 For production deployment, add a wildcard DNS record:
 
 ```
-*.tunl.cc  →  YOUR_SERVER_IP
+*.<your-domain>.cc  →  YOUR_SERVER_IP
 ```
 
 ## License
