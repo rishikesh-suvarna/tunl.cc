@@ -24,6 +24,7 @@ sudo mv tunl /usr/local/bin/tunl
 
 ```bash
 curl -L https://github.com/rishikesh-suvarna/tunl.cc/releases/latest/download/tunl-macos-x64 -o tunl
+xattr -d com.apple.quarantine tunl
 chmod +x tunl
 sudo mv tunl /usr/local/bin/tunl
 ```
@@ -32,6 +33,7 @@ sudo mv tunl /usr/local/bin/tunl
 
 ```bash
 curl -L https://github.com/rishikesh-suvarna/tunl.cc/releases/latest/download/tunl-macos-arm64 -o tunl
+xattr -d com.apple.quarantine tunl
 chmod +x tunl
 sudo mv tunl /usr/local/bin/tunl
 ```

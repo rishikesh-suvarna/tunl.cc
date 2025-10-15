@@ -6,12 +6,10 @@ on:
       - 'v*.*.*'
 
 jobs:
-  build-and-release:
+  build-linux-windows:
     runs-on: ubuntu-latest
-
     permissions:
       contents: write
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -20,7 +18,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          registry-url: 'https://registry.npmjs.org'
           cache: 'yarn'
 
       - name: Install Yarn
@@ -35,27 +32,15 @@ jobs:
       - name: Install pkg globally
         run: yarn global add pkg
 
-      - name: Build binaries
+      - name: Build Linux and Windows binaries
         run: |
           mkdir -p binaries
 
-          # Build for Linux x64
-          pkg dist/cli/index.js \
+          pkg dist/client/index.js \
             --targets node18-linux-x64 \
             --output binaries/tunl-linux-x64
 
-          # Build for macOS x64
-          pkg dist/cli/index.js \
-            --targets node18-macos-x64 \
-            --output binaries/tunl-macos-x64
-
-          # Build for macOS ARM64
-          pkg dist/cli/index.js \
-            --targets node18-macos-arm64 \
-            --output binaries/tunl-macos-arm64
-
-          # Build for Windows x64
-          pkg dist/cli/index.js \
+          pkg dist/client/index.js \
             --targets node18-win-x64 \
             --output binaries/tunl-win-x64.exe
 
@@ -63,10 +48,108 @@ jobs:
         run: |
           cd binaries
           tar -czf tunl-linux-x64.tar.gz tunl-linux-x64
-          tar -czf tunl-macos-x64.tar.gz tunl-macos-x64
-          tar -czf tunl-macos-arm64.tar.gz tunl-macos-arm64
           zip tunl-win-x64.zip tunl-win-x64.exe
           cd ..
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: linux-windows-binaries
+          path: binaries/
+
+  build-macos:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
+
+      - name: Install Yarn
+        run: corepack enable
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build TypeScript
+        run: yarn build
+
+      - name: Install pkg globally
+        run: yarn global add pkg
+
+      - name: Build macOS binaries
+        run: |
+          mkdir -p binaries
+
+          pkg dist/client/index.js \
+            --targets node18-macos-x64 \
+            --output binaries/tunl-macos-x64
+
+          pkg dist/client/index.js \
+            --targets node18-macos-arm64 \
+            --output binaries/tunl-macos-arm64
+
+      - name: Sign macOS binaries (ad-hoc)
+        run: |
+          codesign --sign - --force --deep binaries/tunl-macos-x64
+          codesign --sign - --force --deep binaries/tunl-macos-arm64
+
+          # Verify signatures
+          codesign -v binaries/tunl-macos-x64
+          codesign -v binaries/tunl-macos-arm64
+
+      - name: Compress binaries
+        run: |
+          cd binaries
+          tar -czf tunl-macos-x64.tar.gz tunl-macos-x64
+          tar -czf tunl-macos-arm64.tar.gz tunl-macos-arm64
+          cd ..
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: macos-binaries
+          path: binaries/
+
+  release:
+    needs: [build-linux-windows, build-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'yarn'
+
+      - name: Install Yarn
+        run: corepack enable
+
+      - name: Download Linux/Windows artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: linux-windows-binaries
+          path: binaries
+
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: macos-binaries
+          path: binaries
+
+      - name: List binaries
+        run: ls -lah binaries/
 
       - name: Get version from tag
         id: get_version
@@ -90,6 +173,12 @@ jobs:
           name: Release ${{ steps.get_version.outputs.VERSION }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build TypeScript
+        run: yarn build
 
       - name: Publish to NPM
         run: yarn publish --access public
