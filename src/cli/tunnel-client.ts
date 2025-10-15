@@ -74,8 +74,6 @@ export class TunnelClient {
     try {
       const msg: Message = JSON.parse(data.toString());
 
-      console.log(msg);
-
       switch (msg.type) {
         case MESSAGE_TYPES.REGISTERED:
           this.handleRegistered(msg as RegisteredMessage, resolveConnection);
