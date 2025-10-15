@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>tunl.cc - Expose Your Localhost to the Internet</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/framer-motion@11/dist/framer-motion.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#0B0326',
+            secondary: '#C796FF',
+          },
+          fontFamily: {
+            sans: ['Manrope', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Manrope', sans-serif;
+    }
+
+    .gradient-text {
+      background: linear-gradient(135deg, #C796FF 0%, #9D6FD8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+  </style>
+</head>
+
+<body class="bg-primary text-white min-h-screen">
+
+  <!-- Header -->
+  <nav class="container mx-auto px-6 py-8">
+    <div class="flex justify-between items-center">
+      <div class="text-2xl font-bold gradient-text">
+        <div class="flex">
+          <img src="./assets/images/common/logo-icon.png" class="w-24" alt="">
+          <span class="self-center">tunl.cc</span>
+        </div>
+      </div>
+      <div class="space-x-6">
+        <a href="#features" class="hover:text-secondary transition-colors duration-300">Features</a>
+        <a href="https://github.com/rishikesh-suvarna/tunl.cc" target="_blank"
+          class="hover:text-secondary transition-colors duration-300">GitHub</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="container mx-auto px-6 py-20 text-center">
+    <div id="hero" class="max-w-4xl mx-auto">
+      <h1 class="text-6xl font-bold mb-6 gradient-text">
+        Expose Your Localhost to the Internet
+      </h1>
+      <p class="text-xl text-gray-300 mb-12">
+        Fast, secure, and simple tunneling service for developers.
+        Share your local development with anyone, anywhere.
+      </p>
+
+      <!-- Installation -->
+      <div class="bg-white/5 backdrop-blur-sm rounded-2xl p-8 mb-8 border border-secondary/20">
+        <h3 class="text-lg font-semibold mb-4 text-secondary">Quick Install</h3>
+        <div class="bg-black/30 rounded-lg p-4 font-mono text-sm text-left overflow-x-auto">
+          <span class="text-gray-500"># Install via NPM</span><br>
+          <span class="text-green-400">npm install -g tunl.cc</span><br><br>
+          <span class="text-gray-500"># Start tunneling</span><br>
+          <span class="text-secondary">tunl 3000 myapp</span>
+        </div>
+        <p class="mt-4 text-sm text-gray-400">
+          Your local server at port 3000 is now accessible at
+          <span class="text-secondary font-semibold">https://myapp.tunl.cc</span>
+        </p>
+      </div>
+
+      <!-- Stats -->
+      <div class="flex justify-center space-x-12 text-center">
+        <div>
+          <div class="text-4xl font-bold text-secondary" id="activeTunnels">{{activeTunnels}}</div>
+          <div class="text-gray-400">Active Tunnels</div>
+        </div>
+        <div>
+          <div class="text-4xl font-bold text-secondary">∞</div>
+          <div class="text-gray-400">Free Forever</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section id="features" class="container mx-auto px-6 py-20">
+    <h2 class="text-4xl font-bold text-center mb-16">Why tunl.cc?</h2>
+    <div class="grid md:grid-cols-3 gap-8">
+
+      <div
+        class="feature-card bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-secondary/10 hover:border-secondary/40 hover:bg-white/10 transition-all duration-300">
+        <div class="text-4xl mb-4">⚡</div>
+        <h3 class="text-xl font-semibold mb-3">Lightning Fast</h3>
+        <p class="text-gray-400">Optimized WebSocket connections for minimal latency and maximum performance.</p>
+      </div>
+
+      <div
+        class="feature-card bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-secondary/10 hover:border-secondary/40 hover:bg-white/10 transition-all duration-300">
+        <div class="text-4xl mb-4">🔒</div>
+        <h3 class="text-xl font-semibold mb-3">Secure by Default</h3>
+        <p class="text-gray-400">HTTPS encryption for all tunnels. Your data stays safe.</p>
+      </div>
+
+      <div
+        class="feature-card bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-secondary/10 hover:border-secondary/40 hover:bg-white/10 transition-all duration-300">
+        <div class="text-4xl mb-4">🎯</div>
+        <h3 class="text-xl font-semibold mb-3">Custom Subdomains</h3>
+        <p class="text-gray-400">Choose your own subdomain or let us generate one for you.</p>
+      </div>
+
+      <div
+        class="feature-card bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-secondary/10 hover:border-secondary/40 hover:bg-white/10 transition-all duration-300">
+        <div class="text-4xl mb-4">🚀</div>
+        <h3 class="text-xl font-semibold mb-3">Easy Setup</h3>
+        <p class="text-gray-400">One command to install, one command to run. That's it.</p>
+      </div>
+
+      <div
+        class="feature-card bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-secondary/10 hover:border-secondary/40 hover:bg-white/10 transition-all duration-300">
+        <div class="text-4xl mb-4">🔌</div>
+        <h3 class="text-xl font-semibold mb-3">Webhook Testing</h3>
+        <p class="text-gray-400">Perfect for testing Stripe, GitHub, and other webhooks locally.</p>
+      </div>
+
+      <div
+        class="feature-card bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-secondary/10 hover:border-secondary/40 hover:bg-white/10 transition-all duration-300">
+        <div class="text-4xl mb-4">💻</div>
+        <h3 class="text-xl font-semibold mb-3">Cross-Platform</h3>
+        <p class="text-gray-400">Works on Linux, macOS, and Windows. NPM or standalone binary.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Use Cases -->
+  <section class="container mx-auto px-6 py-20">
+    <h2 class="text-4xl font-bold text-center mb-16">Perfect For</h2>
+    <div class="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+      <div
+        class="bg-secondary/10 rounded-2xl p-8 border border-secondary/30 hover:border-secondary/50 hover:bg-secondary/15 transition-all duration-300">
+        <h3 class="text-xl font-semibold mb-3">Testing Webhooks</h3>
+        <p class="text-gray-400">Test Stripe, PayPal, GitHub webhooks on your local machine without deploying.</p>
+      </div>
+      <div
+        class="bg-secondary/10 rounded-2xl p-8 border border-secondary/30 hover:border-secondary/50 hover:bg-secondary/15 transition-all duration-300">
+        <h3 class="text-xl font-semibold mb-3">Client Demos</h3>
+        <p class="text-gray-400">Show your work in progress to clients without deploying to staging.</p>
+      </div>
+      <div
+        class="bg-secondary/10 rounded-2xl p-8 border border-secondary/30 hover:border-secondary/50 hover:bg-secondary/15 transition-all duration-300">
+        <h3 class="text-xl font-semibold mb-3">Mobile Testing</h3>
+        <p class="text-gray-400">Test your web app on real mobile devices without being on the same network.</p>
+      </div>
+      <div
+        class="bg-secondary/10 rounded-2xl p-8 border border-secondary/30 hover:border-secondary/50 hover:bg-secondary/15 transition-all duration-300">
+        <h3 class="text-xl font-semibold mb-3">API Development</h3>
+        <p class="text-gray-400">Share your local API with frontend developers or external services.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Section -->
+  <section class="container mx-auto px-6 py-20">
+    <div
+      class="max-w-3xl mx-auto text-center bg-gradient-to-r from-secondary/20 to-secondary/10 rounded-3xl p-12 border border-secondary/30">
+      <h2 class="text-4xl font-bold mb-6">Ready to Start Tunneling?</h2>
+      <p class="text-xl text-gray-300 mb-8">Install tunl.cc now and expose your localhost in seconds.</p>
+      <div class="flex flex-col sm:flex-row gap-4 justify-center">
+        <a href="#"
+          class="bg-secondary hover:bg-secondary/90 text-primary font-semibold px-8 py-4 rounded-lg transition-all duration-300 inline-block">
+          Get Started
+        </a>
+        <a href="https://github.com/rishikesh-suvarna/tunl.cc" target="_blank"
+          class="bg-white/10 hover:bg-white/20 text-white font-semibold px-8 py-4 rounded-lg transition-all duration-300 inline-block border border-secondary/30">
+          View on GitHub
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="container mx-auto px-6 py-12 text-center text-gray-400 border-t border-secondary/20">
+    <p>Built with ❤️ by <a href="https://github.com/rishikesh-suvarna"
+        class="text-secondary hover:text-secondary/80 transition-colors duration-300" target="_blank">Rishikesh
+        Suvarna</a></p>
+    <p class="mt-2 text-sm">Open source and free forever</p>
+  </footer>
+
+  <script>
+    // Animate elements on load
+    document.addEventListener('DOMContentLoaded', () => {
+      const hero = document.getElementById('hero');
+      hero.style.opacity = '0';
+      hero.style.transform = 'translateY(20px)';
+
+      setTimeout(() => {
+        hero.style.transition = 'all 0.8s ease-out';
+        hero.style.opacity = '1';
+        hero.style.transform = 'translateY(0)';
+      }, 100);
+
+      // Animate feature cards
+      const cards = document.querySelectorAll('.feature-card');
+      cards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(30px)';
+
+        setTimeout(() => {
+          card.style.transition = 'all 0.6s ease-out';
+          card.style.opacity = '1';
+          card.style.transform = 'translateY(0)';
+        }, 300 + (index * 100));
+      });
+
+      // Update active tunnels every 5 seconds
+      setInterval(async () => {
+        try {
+          const response = await fetch('/api/stats');
+          const data = await response.json();
+          document.getElementById('activeTunnels').textContent = data.activeTunnels || 0;
+        } catch (err) {
+          console.error('Failed to fetch stats');
+        }
+      }, 5000);
+    });
+  </script>
+
+</body>
+
+</html>

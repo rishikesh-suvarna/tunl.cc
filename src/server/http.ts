@@ -1,5 +1,8 @@
 import crypto from 'crypto';
 import { Express, Request, Response } from 'express';
+import fs from 'fs';
+import { IncomingMessage, ServerResponse } from 'http';
+import path from 'path';
 import { DEFAULT_TIMEOUT, MessageType } from '../shared/constants';
 import { RequestMessage, ServerConfig, TunnelInfo } from '../shared/types';
 import { TunnelManager } from './tunnel-manager';
@@ -13,26 +16,111 @@ export function setupHttpServer(
   app.use((req: Request, res: Response) => {
     const subdomain = extractSubdomain(req.hostname, config.baseDomain);
 
-    // Root domain - show service info
+    // Root domain
     if (!subdomain) {
-      return res.json({
-        service: 'Tunnel Service',
-        activeTunnels: tunnelManager.getActiveTunnelCount(),
-        baseUrl: config.baseDomain,
-        usage: `Connect with WebSocket to ws://${config.baseDomain}`,
-        example: `http://myapp.${config.baseDomain}`,
-      });
+      serveLandingPage(req, res, tunnelManager);
+      return;
     }
 
     const tunnel = tunnelManager.getTunnel(subdomain);
 
     if (!tunnel) {
-      return res
-        .status(404)
-        .send(`Tunnel not found: ${subdomain}.${config.baseDomain}`);
+      res.writeHead(404, { 'Content-Type': 'text/html' });
+      res.end(`
+      <!DOCTYPE html>
+      <html>
+        <head><title>Tunnel Not Found</title></head>
+        <body>
+          <h1>Tunnel not found: ${subdomain}.${config.baseDomain}</h1>
+          <p>This tunnel is not active.</p>
+          <a href="https://${config.baseDomain}">Go to homepage</a>
+        </body>
+      </html>
+    `);
+      return;
     }
 
     forwardRequest(req, res, tunnel, tunnelManager, subdomain);
+  });
+}
+
+function serveLandingPage(
+  req: IncomingMessage,
+  res: ServerResponse,
+  tunnelManager: TunnelManager
+): void {
+  const url = req.url || '/';
+
+  // Serve static assets
+  if (url.startsWith('/assets/')) {
+    serveStaticFile(url, res);
+    return;
+  }
+
+  // Serve homepage
+  if (url === '/' || url === '/index.html') {
+    const htmlPath = path.join(__dirname, '../../public/index.html');
+
+    fs.readFile(htmlPath, 'utf8', (err, html) => {
+      if (err) {
+        res.writeHead(500, { 'Content-Type': 'text/plain' });
+        res.end('Internal Server Error');
+        return;
+      }
+
+      // Replace template variables
+      const rendered = html
+        .replace(
+          '{{activeTunnels}}',
+          tunnelManager.getActiveTunnelCount().toString()
+        )
+        .replace('{{timestamp}}', new Date().toISOString());
+
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(rendered);
+    });
+    return;
+  }
+
+  if (url === '/api/stats') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(
+      JSON.stringify({
+        activeTunnels: tunnelManager.getActiveTunnelCount(),
+        timestamp: new Date().toISOString(),
+      })
+    );
+    return;
+  }
+
+  // 404 for other routes
+  res.writeHead(404, { 'Content-Type': 'text/plain' });
+  res.end('Not Found');
+}
+
+function serveStaticFile(url: string, res: ServerResponse): void {
+  const filePath = path.join(__dirname, '../../public', url);
+
+  fs.readFile(filePath, (err, data) => {
+    if (err) {
+      res.writeHead(404, { 'Content-Type': 'text/plain' });
+      res.end('Not Found');
+      return;
+    }
+
+    const ext = path.extname(filePath);
+    const contentType =
+      {
+        '.css': 'text/css',
+        '.js': 'application/javascript',
+        '.json': 'application/json',
+        '.png': 'image/png',
+        '.jpg': 'image/jpeg',
+        '.svg': 'image/svg+xml',
+      }[ext] || 'application/octet-stream';
+
+    res.writeHead(200, { 'Content-Type': contentType });
+    res.end(data);
   });
 }
 
