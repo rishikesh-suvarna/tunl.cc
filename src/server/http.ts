@@ -1,5 +1,3 @@
-// src/server/http.ts
-
 import crypto from 'crypto';
 import { Express, Request, Response } from 'express';
 import { DEFAULT_TIMEOUT, MessageType } from '../shared/constants';
