@@ -16,9 +16,7 @@ export function parseArgs(): CliConfig {
     console.log('  local-port    Port of your local server');
     console.log('  subdomain     Optional custom subdomain');
     console.log('\nEnvironment Variables:');
-    console.log(
-      '  TUNNEL_SERVER  Tunnel server URL (default: ws://localhost:3000)'
-    );
+    console.log('  TUNNEL_SERVER  Tunnel server URL (default: wss://tunl.cc)');
     process.exit(1);
   }
 
@@ -31,11 +29,11 @@ export function parseArgs(): CliConfig {
 
   console.log(`Localport: ${localPort}`);
   console.log(`Subdomain: ${args[1] || 'random'}`);
-  console.log(`Tunnel Server: ${TUNNEL_SERVER || 'ws://localhost:3000'}`);
+  console.log(`Tunnel Server: ${TUNNEL_SERVER || 'wss://tunl.cc'}`);
 
   return {
     localPort,
     subdomain: args[1] || null,
-    tunnelServer: TUNNEL_SERVER || 'ws://localhost:3000',
+    tunnelServer: TUNNEL_SERVER || 'wss://tunl.cc',
   };
 }
