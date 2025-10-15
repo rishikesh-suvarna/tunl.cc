@@ -74,6 +74,8 @@ export class TunnelClient {
     try {
       const msg: Message = JSON.parse(data.toString());
 
+      console.log(msg);
+
       switch (msg.type) {
         case MESSAGE_TYPES.REGISTERED:
           this.handleRegistered(msg as RegisteredMessage, resolveConnection);
@@ -104,7 +106,9 @@ export class TunnelClient {
   }
 
   private handleRequest(msg: RequestMessage): void {
-    console.log(`${msg.method} ${msg.path} -> localhost:${this.localPort}`);
+    console.log(
+      `${msg.method} ${msg.path} -> localhost:${this.localPort}${msg.path}`
+    );
 
     forwardToLocal(this.localPort, msg, (response) => {
       if (!this.ws) return;

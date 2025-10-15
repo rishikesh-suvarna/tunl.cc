@@ -12,28 +12,44 @@ export function forwardToLocal(
   requestMsg: RequestMessage,
   callback: (response: ProxyResponse) => void
 ): void {
-  const { method, path, headers } = requestMsg;
+  const { method, path, headers, body } = requestMsg;
+
+  // Clean headers
+  const cleanHeaders = { ...headers };
+  delete cleanHeaders.host;
+  delete cleanHeaders.connection;
+  delete cleanHeaders['transfer-encoding'];
+
+  // Decode base64 body if present
+  let requestBody: Buffer | undefined;
+  if (body) {
+    console.log(`Body: ${body}`);
+    requestBody = Buffer.from(body, 'base64');
+    cleanHeaders['content-length'] = requestBody.length.toString();
+  }
 
   const options: http.RequestOptions = {
     hostname: 'localhost',
     port: localPort,
     path: path,
     method: method,
-    headers: headers,
+    headers: cleanHeaders,
   };
 
   const req = http.request(options, (res) => {
-    let body = '';
+    const responseChunks: Buffer[] = [];
 
     res.on('data', (chunk: Buffer) => {
-      body += chunk.toString();
+      responseChunks.push(chunk);
     });
 
     res.on('end', () => {
+      const responseBody = Buffer.concat(responseChunks).toString('utf-8');
+
       callback({
         statusCode: res.statusCode || 500,
         headers: res.headers,
-        body: body,
+        body: responseBody,
       });
     });
   });
@@ -48,8 +64,9 @@ export function forwardToLocal(
     });
   });
 
-  if (requestMsg.body) {
-    req.write(requestMsg.body);
+  // Write raw body if present
+  if (requestBody) {
+    req.write(requestBody);
   }
 
   req.end();
