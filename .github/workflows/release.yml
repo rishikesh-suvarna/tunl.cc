@@ -36,11 +36,11 @@ jobs:
         run: |
           mkdir -p binaries
 
-          pkg dist/client/index.js \
+          pkg dist/cli/index.js \
             --targets node18-linux-x64 \
             --output binaries/tunl-linux-x64
 
-          pkg dist/client/index.js \
+          pkg dist/cli/index.js \
             --targets node18-win-x64 \
             --output binaries/tunl-win-x64.exe
 
@@ -87,11 +87,11 @@ jobs:
         run: |
           mkdir -p binaries
 
-          pkg dist/client/index.js \
+          pkg dist/cli/index.js \
             --targets node18-macos-x64 \
             --output binaries/tunl-macos-x64
 
-          pkg dist/client/index.js \
+          pkg dist/cli/index.js \
             --targets node18-macos-arm64 \
             --output binaries/tunl-macos-arm64
 
