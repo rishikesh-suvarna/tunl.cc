@@ -20,8 +20,6 @@
     "dev:cli": "ts-node src/cli/index.ts",
     "dev:server:watch": "nodemon --exec ts-node src/server/index.ts",
     "dev:cli:watch": "nodemon --exec ts-node src/cli/index.ts",
-    "test": "jest",
-    "test:watch": "jest --watch",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
     "clean": "rm -rf dist"
