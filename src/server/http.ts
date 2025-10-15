@@ -1,3 +1,5 @@
+// src/server/http.ts
+
 import crypto from 'crypto';
 import { Express, Request, Response } from 'express';
 import { DEFAULT_TIMEOUT, MessageType } from '../shared/constants';
@@ -41,31 +43,58 @@ function forwardRequest(
   res: Response,
   tunnel: TunnelInfo,
   tunnelManager: TunnelManager,
-  _subdomain: string
+  subdomain: string
 ): void {
   const requestId = crypto.randomBytes(16).toString('hex');
+  const chunks: Buffer[] = [];
 
-  const requestData: RequestMessage = {
-    type: MessageType.REQUEST,
-    requestId,
-    method: req.method,
-    path: req.url,
-    headers: req.headers,
-    body: req.body,
-  };
+  req.on('data', (chunk: Buffer) => {
+    chunks.push(chunk);
+  });
 
-  const timeout = setTimeout(() => {
-    tunnelManager.timeoutRequest(requestId);
-  }, DEFAULT_TIMEOUT);
+  req.on('end', () => {
+    // Concatenate all chunks
+    const bodyBuffer = Buffer.concat(chunks);
 
-  tunnelManager.addPendingRequest(requestId, res, timeout);
+    // Convert to base64 for JSON transmission
+    const body =
+      bodyBuffer.length > 0 ? bodyBuffer.toString('base64') : undefined;
 
-  try {
-    tunnel.ws.send(JSON.stringify(requestData));
-  } catch (err) {
-    console.error('Error forwarding request:', err);
-    clearTimeout(timeout);
-    tunnelManager.pendingRequestsMap.delete(requestId);
-    res.status(502).send('Bad Gateway');
-  }
+    console.log(
+      `[${subdomain}] ${req.method} ${req.url} - Body size: ${bodyBuffer.length} bytes`
+    );
+
+    const requestData: RequestMessage = {
+      type: MessageType.REQUEST,
+      requestId,
+      method: req.method,
+      path: req.url,
+      headers: req.headers,
+      body: body,
+    };
+
+    const timeout = setTimeout(() => {
+      tunnelManager.timeoutRequest(requestId);
+    }, DEFAULT_TIMEOUT);
+
+    tunnelManager.addPendingRequest(requestId, res, timeout);
+
+    try {
+      const messageStr = JSON.stringify(requestData);
+      console.log(
+        `[${subdomain}] Sending message size: ${messageStr.length} bytes`
+      );
+      tunnel.ws.send(messageStr);
+    } catch (err) {
+      console.error(`[${subdomain}] Error sending:`, err);
+      clearTimeout(timeout);
+      tunnelManager.pendingRequestsMap.delete(requestId);
+      res.status(502).send('Bad Gateway');
+    }
+  });
+
+  req.on('error', (err) => {
+    console.error(`[${subdomain}] Request error:`, err);
+    res.status(400).send('Bad Request');
+  });
 }

@@ -19,6 +19,8 @@ const config: ServerConfig = {
 
 // Initialize
 const app = express();
+
+// Create HTTP and WebSocket servers
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 const tunnelManager = new TunnelManager();
