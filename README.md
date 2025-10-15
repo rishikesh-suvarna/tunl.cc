@@ -82,7 +82,7 @@ BASE_DOMAIN=tunl.cc PORT=80 npm start
 - `PORT` - Server port (default: 3000)
 - `BASE_DOMAIN` - Your domain (default: localhost:3000)
 - `HTTPS` - Enable HTTPS (default: false)
-- `TUNNEL_SERVER` - Tunnel server URL for client (default: ws://localhost:3000)
+- `TUNNEL_SERVER` - Tunnel server URL for client (default: wss://tunl.cc)
 
 ## Development
 
