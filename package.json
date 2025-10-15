@@ -1,13 +1,13 @@
 {
   "name": "tunl.cc",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "main": "./dist/server/index.js",
   "bin": {
-    "tunl": "./dist/cli/index.js"
+    "tunl": "./bin/tunl"
   },
   "files": [
     "dist",
-    "bin/tunl",
+    "bin",
     "README.md",
     "LICENSE"
   ],
