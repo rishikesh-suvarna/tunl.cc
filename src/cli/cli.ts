@@ -10,8 +10,8 @@ export function parseArgs(): CliConfig {
   const args = process.argv.slice(2);
 
   if (!args[0]) {
-    console.log('Usage: tunnel <local-port> [subdomain]');
-    console.log('Example: tunnel 8080 myapp');
+    console.log('Usage: tunl <local-port> [subdomain]');
+    console.log('Example: tunl 8080 myapp');
     console.log('\nOptions:');
     console.log('  local-port    Port of your local server');
     console.log('  subdomain     Optional custom subdomain');
