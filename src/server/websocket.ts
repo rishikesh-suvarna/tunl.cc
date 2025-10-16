@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { IncomingMessage } from 'http';
 import WebSocket from 'ws';
 import { MESSAGE_TYPES, MessageType } from '../shared/constants';
 import {
@@ -17,7 +18,7 @@ export function setupWebSocketServer(
   tunnelManager: TunnelManager,
   config: ServerConfig
 ): void {
-  wss.on('connection', (ws: WebSocket, req) => {
+  wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
     const ip = req.socket.remoteAddress || 'unknown';
     let subdomain: string | null = null;
     const clientId = crypto.randomBytes(8).toString('hex');
