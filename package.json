@@ -6,7 +6,9 @@
     "tunl": "./bin/tunl"
   },
   "files": [
-    "dist",
+    "dist/cli",
+    "dist/shared",
+    "dist/config",
     "bin",
     "public",
     "README.md",
@@ -23,7 +25,8 @@
     "dev:cli:watch": "nodemon --exec ts-node src/cli/index.ts",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "migrate": "npx knex migrate:latest"
   },
   "author": "Rishikesh S",
   "license": "MIT",
@@ -31,11 +34,14 @@
   "dependencies": {
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "knex": "^3.1.0",
+    "pg": "^8.16.3",
     "ws": "^8.18.3"
   },
   "devDependencies": {
     "@types/express": "^5.0.3",
     "@types/node": "^24.7.2",
+    "@types/pg": "^8.15.5",
     "@types/ws": "^8.18.1",
     "@typescript-eslint/eslint-plugin": "^8.46.1",
     "@typescript-eslint/parser": "^8.46.1",
