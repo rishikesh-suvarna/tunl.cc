@@ -10,6 +10,7 @@ import {
 } from '../shared/types';
 import { TunnelManager } from './tunnel-manager';
 import { Logger } from './utils/logger';
+import { isValidSubdomain } from './utils/validation';
 
 export function setupWebSocketServer(
   wss: WebSocket.Server,
@@ -75,6 +76,17 @@ function handleRegister(
   setSubdomain: (subdomain: string) => void
 ): void {
   const subdomain = msg.subdomain || tunnelManager.generateSubdomain();
+
+  // Validate subdomain
+  if (!isValidSubdomain(subdomain)) {
+    const errorMsg: ErrorMessage = {
+      type: MessageType.ERROR,
+      message:
+        'Invalid subdomain. Must be 3-63 characters, alphanumeric or hyphens, and not reserved or profane.',
+    };
+    ws.send(JSON.stringify(errorMsg));
+    return;
+  }
 
   const result = tunnelManager.register(subdomain, ws);
 
