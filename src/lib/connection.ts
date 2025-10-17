@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 import knex, { Knex } from 'knex';
 
 const knexConfig = require('../../knexfile');
