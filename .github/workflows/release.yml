@@ -27,7 +27,7 @@ jobs:
         run: yarn install --frozen-lockfile
 
       - name: Run Migrations
-        run: yarn knex migrate
+        run: yarn migrate
 
       - name: Build TypeScript
         run: yarn build
@@ -81,7 +81,7 @@ jobs:
         run: yarn install --frozen-lockfile
 
       - name: Run Migrations
-        run: yarn knex migrate
+        run: yarn migrate
 
       - name: Build TypeScript
         run: yarn build
@@ -184,7 +184,7 @@ jobs:
         run: yarn install --frozen-lockfile
 
       - name: Run Migrations
-        run: yarn knex migrate
+        run: yarn migrate
 
       - name: Build TypeScript
         run: yarn build
