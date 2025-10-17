@@ -182,12 +182,7 @@ function forwardRequest(
       ip: req.socket.remoteAddress || 'unknown',
     };
 
-    tunnelManager.addPendingRequest(
-      requestId,
-      res as any,
-      timeout,
-      requestMetadata
-    );
+    tunnelManager.addPendingRequest(requestId, res, timeout, requestMetadata);
 
     try {
       tunnel.ws.send(JSON.stringify(requestData));
