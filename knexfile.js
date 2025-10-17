@@ -1,10 +1,7 @@
-import dotenv from 'dotenv';
+/* eslint-disable @typescript-eslint/no-require-imports */
+require('dotenv').config();
 
-dotenv.config({
-  quiet: true,
-});
-
-export default {
+module.exports = {
   development: {
     client: 'postgresql',
     connection: {
@@ -13,6 +10,7 @@ export default {
       database: process.env.DB_NAME || 'tunlcc_dev',
       user: process.env.DB_USER || 'postgres',
       password: process.env.DB_PASSWORD || 'postgres',
+      ssl: process.env.DB_SSL ? { rejectUnauthorized: false } : false,
     },
     pool: {
       min: 2,
