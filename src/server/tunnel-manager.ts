@@ -1,6 +1,5 @@
 import crypto from 'crypto';
-import { Response } from 'express';
-import { IncomingHttpHeaders } from 'http';
+import { IncomingHttpHeaders, ServerResponse } from 'http';
 import WebSocket from 'ws';
 import { db } from '../lib/connection';
 import { SUBDOMAIN_LENGTH } from '../shared/constants';
@@ -171,7 +170,7 @@ export class TunnelManager {
 
   addPendingRequest(
     requestId: string,
-    res: Response,
+    res: ServerResponse,
     timeout: NodeJS.Timeout,
     metadata?: any
   ): void {
