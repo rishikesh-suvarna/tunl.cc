@@ -1,6 +1,10 @@
-require('dotenv').config();
+import dotenv from 'dotenv';
 
-module.exports = {
+dotenv.config({
+  quiet: true,
+});
+
+export default {
   development: {
     client: 'postgresql',
     connection: {
