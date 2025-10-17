@@ -1,5 +1,4 @@
 import crypto from 'crypto';
-import { IncomingMessage } from 'http';
 import WebSocket from 'ws';
 import { MESSAGE_TYPES, MessageType } from '../shared/constants';
 import {
@@ -18,7 +17,7 @@ export function setupWebSocketServer(
   tunnelManager: TunnelManager,
   config: ServerConfig
 ): void {
-  wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
+  wss.on('connection', (ws: WebSocket, req) => {
     const ip = req.socket.remoteAddress || 'unknown';
     let subdomain: string | null = null;
     const clientId = crypto.randomBytes(8).toString('hex');
@@ -42,7 +41,6 @@ export function setupWebSocketServer(
       // Rate limit messages
       messageCount++;
       if (messageCount > 100) {
-        // Max 100 messages per second
         logger.warn('Message rate limit exceeded');
         ws.close();
         return;
@@ -50,7 +48,6 @@ export function setupWebSocketServer(
 
       // Size limit
       if (data.toString().length > 1024 * 1024) {
-        // 1MB
         logger.warn('Message too large');
         ws.close();
         return;
@@ -68,6 +65,7 @@ export function setupWebSocketServer(
               tunnelManager,
               config,
               logger,
+              ip,
               (sub: string) => {
                 subdomain = sub;
               }
@@ -75,7 +73,7 @@ export function setupWebSocketServer(
             break;
 
           case MESSAGE_TYPES.RESPONSE:
-            handleResponse(msg, tunnelManager);
+            handleResponse(msg as ResponseMessage, tunnelManager);
             break;
 
           default:
@@ -102,14 +100,15 @@ export function setupWebSocketServer(
   });
 }
 
-function handleRegister(
+async function handleRegister(
   ws: WebSocket,
   msg: RegisterMessage,
   tunnelManager: TunnelManager,
   config: ServerConfig,
   logger: Logger,
+  ip: string,
   setSubdomain: (subdomain: string) => void
-): void {
+): Promise<void> {
   const subdomain = msg.subdomain || tunnelManager.generateSubdomain();
 
   // Validate subdomain
@@ -117,13 +116,18 @@ function handleRegister(
     const errorMsg: ErrorMessage = {
       type: MessageType.ERROR,
       message:
-        'Invalid subdomain. Must be 3-63 characters, alphanumeric or hyphens, and not reserved or profane.',
+        'Invalid subdomain. Must be 3-63 characters, alphanumeric or hyphens.',
     };
     ws.send(JSON.stringify(errorMsg));
     return;
   }
 
-  const result = tunnelManager.register(subdomain, ws);
+  const result = await tunnelManager.register(
+    subdomain,
+    ws,
+    msg.apiKey || null,
+    ip
+  );
 
   if (!result.success) {
     const errorMsg: ErrorMessage = {

@@ -27,8 +27,18 @@ export class TunnelManager {
     ip: string = 'unknown'
   ): Promise<RegisterResult> {
     try {
-      // Check if subdomain already active
+      // Check if subdomain already active in memory
       if (this.activeTunnels.has(subdomain)) {
+        return { success: false, error: 'Subdomain already taken' };
+      }
+
+      // Check if subdomain exists in database and is active
+      const existingTunnel = await db('tunnels')
+        .where({ subdomain, is_active: true })
+        .whereNull('disconnected_at')
+        .first();
+
+      if (existingTunnel) {
         return { success: false, error: 'Subdomain already taken' };
       }
 
@@ -101,9 +111,10 @@ export class TunnelManager {
     }
   }
 
-  getTunnel(subdomain: string): { ws: WebSocket } | undefined {
-    const tunnel = this.activeTunnels.get(subdomain);
-    return tunnel ? { ws: tunnel.ws } : undefined;
+  getTunnel(
+    subdomain: string
+  ): { ws: WebSocket; tunnelId: string } | undefined {
+    return this.activeTunnels.get(subdomain);
   }
 
   hasTunnel(subdomain: string): boolean {
@@ -140,26 +151,31 @@ export class TunnelManager {
     const tunnel = this.activeTunnels.get(subdomain);
 
     if (tunnel) {
-      await db('requests').insert({
-        tunnel_id: tunnel.tunnelId,
-        method,
-        path,
-        status_code: statusCode,
-        request_size: requestSize,
-        response_size: responseSize,
-        duration_ms: duration,
-        user_agent: userAgent?.substring(0, 500),
-        ip_address: ip,
-      });
+      try {
+        await db('requests').insert({
+          tunnel_id: tunnel.tunnelId,
+          method,
+          path,
+          status_code: statusCode,
+          request_size: requestSize,
+          response_size: responseSize,
+          duration_ms: duration,
+          user_agent: userAgent?.substring(0, 500),
+          ip_address: ip,
+        });
+      } catch (err) {
+        console.error('Error logging request:', err);
+      }
     }
   }
 
   addPendingRequest(
     requestId: string,
     res: Response,
-    timeout: NodeJS.Timeout
+    timeout: NodeJS.Timeout,
+    metadata?: any
   ): void {
-    this.pendingRequests.set(requestId, { res, timeout });
+    this.pendingRequests.set(requestId, { res, timeout, metadata });
   }
 
   resolvePendingRequest(
@@ -173,19 +189,46 @@ export class TunnelManager {
     if (!pending) return false;
 
     clearTimeout(pending.timeout);
-    const { res } = pending;
+    const { res, metadata } = pending;
 
-    res.status(statusCode || 200);
+    // Use writeHead and end instead of Express methods
+    const responseHeaders: any = { 'Content-Type': 'text/html' };
 
     if (headers) {
       Object.entries(headers).forEach(([k, v]) => {
         if (v !== undefined) {
-          res.setHeader(k, v);
+          responseHeaders[k] = v;
         }
       });
     }
 
-    res.send(body || '');
+    res.writeHead(statusCode || 200, responseHeaders);
+    res.end(body || '');
+
+    // Log request with complete info if metadata exists
+    if (metadata) {
+      const responseSize = body ? Buffer.byteLength(body.toString()) : 0;
+      const duration = Date.now() - metadata.startTime;
+
+      this.logRequest(
+        metadata.subdomain,
+        metadata.method,
+        metadata.path,
+        statusCode,
+        metadata.requestSize,
+        responseSize,
+        duration,
+        metadata.userAgent,
+        metadata.ip
+      );
+
+      this.incrementRequestCount(
+        metadata.subdomain,
+        metadata.requestSize,
+        responseSize
+      );
+    }
+
     this.pendingRequests.delete(requestId);
 
     return true;
@@ -194,33 +237,43 @@ export class TunnelManager {
   timeoutRequest(requestId: string): void {
     const pending = this.pendingRequests.get(requestId);
     if (pending) {
-      pending.res.status(504).send('Gateway Timeout');
+      pending.res.writeHead(504, { 'Content-Type': 'text/plain' });
+      pending.res.end('Gateway Timeout');
       this.pendingRequests.delete(requestId);
     }
   }
 
   async getActiveTunnelCount(): Promise<number> {
-    const result = await db('tunnels')
-      .where({ is_active: true })
-      .whereNull('disconnected_at')
-      .count('* as count')
-      .first();
+    try {
+      const result = await db('tunnels')
+        .where({ is_active: true })
+        .whereNull('disconnected_at')
+        .count('* as count')
+        .first();
 
-    return result ? parseInt(result.count as string) : 0;
+      return result ? parseInt(result.count as string) : 0;
+    } catch (err) {
+      console.error('Error getting active tunnel count:', err);
+      return this.activeTunnels.size; // Fallback to memory count
+    }
   }
 
   // Cleanup tunnels that didn't disconnect properly
-  private async cleanupInactiveTunnels(): Promise<void> {
+  private cleanupInactiveTunnels(): void {
     setInterval(async () => {
-      const oneHourAgo = new Date(Date.now() - 3600000);
+      try {
+        const oneHourAgo = new Date(Date.now() - 3600000);
 
-      await db('tunnels')
-        .where({ is_active: true })
-        .where('last_activity_at', '<', oneHourAgo)
-        .update({
-          is_active: false,
-          disconnected_at: new Date(),
-        });
+        await db('tunnels')
+          .where({ is_active: true })
+          .where('last_activity_at', '<', oneHourAgo)
+          .update({
+            is_active: false,
+            disconnected_at: new Date(),
+          });
+      } catch (err) {
+        console.error('Error cleaning up inactive tunnels:', err);
+      }
     }, 300000); // Run every 5 minutes
   }
 
