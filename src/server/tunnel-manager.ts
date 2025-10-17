@@ -262,6 +262,7 @@ export class TunnelManager {
   private cleanupInactiveTunnels(): void {
     setInterval(async () => {
       try {
+        console.log(`Cleaning up inactive tunnels...`);
         const oneHourAgo = new Date(Date.now() - 3600000);
 
         await db('tunnels')
