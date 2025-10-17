@@ -192,6 +192,7 @@ function forwardRequest(
     try {
       tunnel.ws.send(JSON.stringify(requestData));
     } catch (err) {
+      console.error('Error forwarding request:', err);
       clearTimeout(timeout);
       tunnelManager.pendingRequestsMap.delete(requestId);
       res.writeHead(502, { 'Content-Type': 'text/plain' });
@@ -213,6 +214,7 @@ function forwardRequest(
   });
 
   req.on('error', (err) => {
+    console.error('Request error:', err);
     res.writeHead(400, { 'Content-Type': 'text/plain' });
     res.end('Bad Request');
   });
