@@ -26,9 +26,6 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
-      - name: Run Migrations
-        run: yarn migrate
-
       - name: Build TypeScript
         run: yarn build
 
@@ -79,9 +76,6 @@ jobs:
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile
-
-      - name: Run Migrations
-        run: yarn migrate
 
       - name: Build TypeScript
         run: yarn build
@@ -182,9 +176,6 @@ jobs:
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile
-
-      - name: Run Migrations
-        run: yarn migrate
 
       - name: Build TypeScript
         run: yarn build
