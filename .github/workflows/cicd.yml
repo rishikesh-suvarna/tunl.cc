@@ -34,9 +34,6 @@ jobs:
       - name: Lint code
         run: yarn lint
 
-      - name: Run Migrations
-        run: yarn migrate
-
       - name: Build TypeScript
         run: yarn build
 
