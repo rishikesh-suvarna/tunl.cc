@@ -1,47 +1,36 @@
 import crypto from 'crypto';
-import { Express, Request, Response } from 'express';
 import fs from 'fs';
 import { IncomingMessage, ServerResponse } from 'http';
 import path from 'path';
 import { DEFAULT_TIMEOUT, MessageType } from '../shared/constants';
-import { RequestMessage, ServerConfig, TunnelInfo } from '../shared/types';
+import { RequestMessage, ServerConfig } from '../shared/types';
 import { TunnelManager } from './tunnel-manager';
 import { extractSubdomain } from './utils/subdomain';
 
-export function setupHttpServer(
-  app: Express,
+export function handleTunnelRequest(
+  req: IncomingMessage,
+  res: ServerResponse,
   tunnelManager: TunnelManager,
   config: ServerConfig
 ): void {
-  app.use((req: Request, res: Response) => {
-    const subdomain = extractSubdomain(req.hostname, config.baseDomain);
+  const subdomain = extractSubdomain(req.headers.host, config.baseDomain);
 
-    // Root domain
-    if (!subdomain) {
-      serveLandingPage(req, res, tunnelManager);
-      return;
-    }
+  // Root domain - serve landing page
+  if (!subdomain) {
+    serveLandingPage(req, res, tunnelManager);
+    return;
+  }
 
-    const tunnel = tunnelManager.getTunnel(subdomain);
+  // Subdomain - handle tunnel
+  const tunnel = tunnelManager.getTunnel(subdomain);
 
-    if (!tunnel) {
-      res.writeHead(404, { 'Content-Type': 'text/html' });
-      res.end(`
-      <!DOCTYPE html>
-      <html>
-        <head><title>Tunnel Not Found</title></head>
-        <body>
-          <h1>Tunnel not found: ${subdomain}.${config.baseDomain}</h1>
-          <p>This tunnel is not active.</p>
-          <a href="https://${config.baseDomain}">Go to homepage</a>
-        </body>
-      </html>
-    `);
-      return;
-    }
+  if (!tunnel) {
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    res.end(`Tunnel not found: ${subdomain}.${config.baseDomain}`);
+    return;
+  }
 
-    forwardRequest(req, res, tunnel, tunnelManager, subdomain);
-  });
+  forwardRequest(req, res, tunnel, tunnelManager, subdomain);
 }
 
 function serveLandingPage(
@@ -57,23 +46,29 @@ function serveLandingPage(
     return;
   }
 
+  // API endpoint for stats
+  if (url === '/api/stats') {
+    handleStatsRequest(res, tunnelManager);
+    return;
+  }
+
   // Serve homepage
   if (url === '/' || url === '/index.html') {
     const htmlPath = path.join(__dirname, '../../public/index.html');
 
-    fs.readFile(htmlPath, 'utf8', (err, html) => {
+    fs.readFile(htmlPath, 'utf8', async (err, html) => {
       if (err) {
         res.writeHead(500, { 'Content-Type': 'text/plain' });
         res.end('Internal Server Error');
         return;
       }
 
+      // Get active tunnels count from database
+      const activeTunnels = await tunnelManager.getActiveTunnelCount();
+
       // Replace template variables
       const rendered = html
-        .replace(
-          '{{activeTunnels}}',
-          tunnelManager.getActiveTunnelCount().toString()
-        )
+        .replace('{{activeTunnels}}', activeTunnels.toString())
         .replace('{{timestamp}}', new Date().toISOString());
 
       res.writeHead(200, { 'Content-Type': 'text/html' });
@@ -82,20 +77,24 @@ function serveLandingPage(
     return;
   }
 
-  if (url === '/api/stats') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(
-      JSON.stringify({
-        activeTunnels: tunnelManager.getActiveTunnelCount(),
-        timestamp: new Date().toISOString(),
-      })
-    );
-    return;
-  }
-
   // 404 for other routes
   res.writeHead(404, { 'Content-Type': 'text/plain' });
   res.end('Not Found');
+}
+
+async function handleStatsRequest(
+  res: ServerResponse,
+  tunnelManager: TunnelManager
+): Promise<void> {
+  const activeTunnels = await tunnelManager.getActiveTunnelCount();
+
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(
+    JSON.stringify({
+      activeTunnels: activeTunnels,
+      timestamp: new Date().toISOString(),
+    })
+  );
 }
 
 function serveStaticFile(url: string, res: ServerResponse): void {
@@ -125,62 +124,96 @@ function serveStaticFile(url: string, res: ServerResponse): void {
 }
 
 function forwardRequest(
-  req: Request,
-  res: Response,
-  tunnel: TunnelInfo,
+  req: IncomingMessage,
+  res: ServerResponse,
+  tunnel: { ws: any; tunnelId: string },
   tunnelManager: TunnelManager,
   subdomain: string
 ): void {
   const requestId = crypto.randomBytes(16).toString('hex');
   const chunks: Buffer[] = [];
+  const startTime = Date.now();
 
   req.on('data', (chunk: Buffer) => {
     chunks.push(chunk);
   });
 
-  req.on('end', () => {
-    // Concatenate all chunks
+  req.on('end', async () => {
     const bodyBuffer = Buffer.concat(chunks);
-
-    // Convert to base64 for JSON transmission
     const body =
       bodyBuffer.length > 0 ? bodyBuffer.toString('base64') : undefined;
-
-    console.log(
-      `[${subdomain}] ${req.method} ${req.url} - Body size: ${bodyBuffer.length} bytes`
-    );
 
     const requestData: RequestMessage = {
       type: MessageType.REQUEST,
       requestId,
-      method: req.method,
-      path: req.url,
+      method: req.method || 'GET',
+      path: req.url || '/',
       headers: req.headers,
       body: body,
     };
 
     const timeout = setTimeout(() => {
-      tunnelManager.timeoutRequest(requestId);
+      res.writeHead(504, { 'Content-Type': 'text/plain' });
+      res.end('Gateway Timeout');
+      tunnelManager.pendingRequestsMap.delete(requestId);
+
+      // Log timeout
+      tunnelManager.logRequest(
+        subdomain,
+        req.method || 'GET',
+        req.url || '/',
+        504,
+        bodyBuffer.length,
+        0,
+        Date.now() - startTime,
+        req.headers['user-agent'],
+        req.socket.remoteAddress || 'unknown'
+      );
     }, DEFAULT_TIMEOUT);
 
-    tunnelManager.addPendingRequest(requestId, res, timeout);
+    // Store request metadata for later logging
+    const requestMetadata = {
+      subdomain,
+      method: req.method || 'GET',
+      path: req.url || '/',
+      requestSize: bodyBuffer.length,
+      startTime,
+      userAgent: req.headers['user-agent'],
+      ip: req.socket.remoteAddress || 'unknown',
+    };
+
+    tunnelManager.addPendingRequest(
+      requestId,
+      res as any,
+      timeout,
+      requestMetadata
+    );
 
     try {
-      const messageStr = JSON.stringify(requestData);
-      console.log(
-        `[${subdomain}] Sending message size: ${messageStr.length} bytes`
-      );
-      tunnel.ws.send(messageStr);
+      tunnel.ws.send(JSON.stringify(requestData));
     } catch (err) {
-      console.error(`[${subdomain}] Error sending:`, err);
       clearTimeout(timeout);
       tunnelManager.pendingRequestsMap.delete(requestId);
-      res.status(502).send('Bad Gateway');
+      res.writeHead(502, { 'Content-Type': 'text/plain' });
+      res.end('Bad Gateway');
+
+      // Log error
+      tunnelManager.logRequest(
+        subdomain,
+        req.method || 'GET',
+        req.url || '/',
+        502,
+        bodyBuffer.length,
+        0,
+        Date.now() - startTime,
+        req.headers['user-agent'],
+        req.socket.remoteAddress || 'unknown'
+      );
     }
   });
 
   req.on('error', (err) => {
-    console.error(`[${subdomain}] Request error:`, err);
-    res.status(400).send('Bad Request');
+    res.writeHead(400, { 'Content-Type': 'text/plain' });
+    res.end('Bad Request');
   });
 }

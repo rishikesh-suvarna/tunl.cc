@@ -1,4 +1,4 @@
-import { IncomingHttpHeaders } from 'http';
+import { IncomingHttpHeaders, ServerResponse } from 'http';
 import WebSocket from 'ws';
 import { MessageType } from './constants';
 
@@ -14,13 +14,23 @@ export interface TunnelInfo {
 }
 
 export interface PendingRequest {
-  res: any;
+  res: ServerResponse;
   timeout: NodeJS.Timeout;
+  metadata?: {
+    subdomain: string;
+    method: string;
+    path: string;
+    requestSize: number;
+    startTime: number;
+    userAgent?: string;
+    ip: string;
+  };
 }
 
 export interface RegisterMessage {
   type: MessageType.REGISTER;
   subdomain?: string;
+  apiKey?: string;
 }
 
 export interface RegisteredMessage {
