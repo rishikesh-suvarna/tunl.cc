@@ -30,5 +30,6 @@ export const DB_SSL = getEnvVar('DB_SSL', 'false') === 'true';
 
 export const REDIS_HOST = getEnvVar('REDIS_HOST', 'localhost');
 export const REDIS_PORT = parseInt(getEnvVar('REDIS_PORT', '6379'), 10);
+export const REDIS_USER = getEnvVar('REDIS_USER', '');
 export const REDIS_PASSWORD = getEnvVar('REDIS_PASSWORD', '');
 export const REDIS_DB = parseInt(getEnvVar('REDIS_DB', '0'), 10);

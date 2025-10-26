@@ -4,12 +4,14 @@ import {
   REDIS_HOST,
   REDIS_PASSWORD,
   REDIS_PORT,
+  REDIS_USER,
 } from '../config/app.config';
 
 // Redis client configuration
 const redis = new Redis({
   host: REDIS_HOST || 'localhost',
   port: REDIS_PORT || 6379,
+  username: REDIS_USER,
   password: REDIS_PASSWORD,
   db: REDIS_DB || 0,
   retryStrategy: (times: number) => {
