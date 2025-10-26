@@ -63,7 +63,7 @@ function serveLandingPage(
         return;
       }
 
-      // Get active tunnels count from database
+      // Get active tunnels count from Redis
       const activeTunnels = await tunnelManager.getActiveTunnelCount();
 
       // Replace template variables
@@ -126,7 +126,7 @@ function serveStaticFile(url: string, res: ServerResponse): void {
 function forwardRequest(
   req: IncomingMessage,
   res: ServerResponse,
-  tunnel: { ws: any; tunnelId: string },
+  tunnel: { ws: any },
   tunnelManager: TunnelManager,
   subdomain: string
 ): void {
@@ -153,25 +153,10 @@ function forwardRequest(
     };
 
     const timeout = setTimeout(() => {
-      res.writeHead(504, { 'Content-Type': 'text/plain' });
-      res.end('Gateway Timeout');
-      tunnelManager.pendingRequestsMap.delete(requestId);
-
-      // Log timeout
-      tunnelManager.logRequest(
-        subdomain,
-        req.method || 'GET',
-        req.url || '/',
-        504,
-        bodyBuffer.length,
-        0,
-        Date.now() - startTime,
-        req.headers['user-agent'],
-        req.socket.remoteAddress || 'unknown'
-      );
+      tunnelManager.timeoutRequest(requestId);
     }, DEFAULT_TIMEOUT);
 
-    // Store request metadata for later logging
+    // Store request metadata for metrics tracking
     const requestMetadata = {
       subdomain,
       method: req.method || 'GET',
@@ -192,19 +177,6 @@ function forwardRequest(
       tunnelManager.pendingRequestsMap.delete(requestId);
       res.writeHead(502, { 'Content-Type': 'text/plain' });
       res.end('Bad Gateway');
-
-      // Log error
-      tunnelManager.logRequest(
-        subdomain,
-        req.method || 'GET',
-        req.url || '/',
-        502,
-        bodyBuffer.length,
-        0,
-        Date.now() - startTime,
-        req.headers['user-agent'],
-        req.socket.remoteAddress || 'unknown'
-      );
     }
   });
 

@@ -2,11 +2,12 @@ import crypto from 'crypto';
 import { IncomingHttpHeaders, ServerResponse } from 'http';
 import WebSocket from 'ws';
 import { db } from '../lib/db';
+import { redisTunnel } from '../lib/redis';
 import { SUBDOMAIN_LENGTH } from '../shared/constants';
 import { PendingRequest, RegisterResult } from '../shared/types';
 
 export class TunnelManager {
-  private activeTunnels: Map<string, { ws: WebSocket; tunnelId: string }>;
+  private activeTunnels: Map<string, { ws: WebSocket }>;
   private pendingRequests: Map<string, PendingRequest>;
 
   constructor() {
@@ -31,12 +32,8 @@ export class TunnelManager {
         return { success: false, error: 'Subdomain already taken' };
       }
 
-      // Check if subdomain exists in database and is active
-      const existingTunnel = await db('tunnels')
-        .where({ subdomain, is_active: true })
-        .whereNull('disconnected_at')
-        .first();
-
+      // Check if subdomain exists in Redis
+      const existingTunnel = await redisTunnel.exists(subdomain);
       if (existingTunnel) {
         return { success: false, error: 'Subdomain already taken' };
       }
@@ -55,38 +52,23 @@ export class TunnelManager {
 
         userId = user.id;
 
-        // Check user's tunnel limit
-        const activeTunnelCount = await db('tunnels')
-          .where({ user_id: userId, is_active: true })
-          .whereNull('disconnected_at')
-          .count('* as count')
-          .first();
+        if (!userId) {
+          return { success: false, error: 'User ID not found' };
+        }
 
-        if (
-          activeTunnelCount &&
-          parseInt(activeTunnelCount.count as string) >= user.tunnel_limit
-        ) {
+        // Check user's tunnel limit using Redis
+        const activeTunnelCount = await redisTunnel.getUserTunnelCount(userId);
+
+        if (activeTunnelCount >= user.tunnel_limit) {
           return { success: false, error: 'Tunnel limit reached' };
         }
       }
 
-      // Create tunnel record in database
-      const [tunnel] = await db('tunnels')
-        .insert({
-          subdomain,
-          user_id: userId,
-          ip_address: ip,
-          is_active: true,
-          connected_at: new Date(),
-          last_activity_at: new Date(),
-        })
-        .returning('*');
+      // Create tunnel in Redis
+      await redisTunnel.create(subdomain, userId, ip);
 
       // Store in memory with WebSocket
-      this.activeTunnels.set(subdomain, {
-        ws,
-        tunnelId: tunnel.id,
-      });
+      this.activeTunnels.set(subdomain, { ws });
 
       return { success: true, subdomain };
     } catch (err) {
@@ -99,20 +81,15 @@ export class TunnelManager {
     const tunnel = this.activeTunnels.get(subdomain);
 
     if (tunnel) {
-      // Update database
-      await db('tunnels').where({ id: tunnel.tunnelId }).update({
-        is_active: false,
-        disconnected_at: new Date(),
-      });
+      // Remove from Redis
+      await redisTunnel.remove(subdomain);
 
       // Remove from memory
       this.activeTunnels.delete(subdomain);
     }
   }
 
-  getTunnel(
-    subdomain: string
-  ): { ws: WebSocket; tunnelId: string } | undefined {
+  getTunnel(subdomain: string): { ws: WebSocket } | undefined {
     return this.activeTunnels.get(subdomain);
   }
 
@@ -125,46 +102,8 @@ export class TunnelManager {
     requestSize: number,
     responseSize: number
   ): Promise<void> {
-    const tunnel = this.activeTunnels.get(subdomain);
-
-    if (tunnel) {
-      await db('tunnels')
-        .where({ id: tunnel.tunnelId })
-        .increment('requests_count', 1)
-        .increment('bytes_transferred', requestSize + responseSize)
-        .update({ last_activity_at: new Date() });
-    }
-  }
-
-  async logRequest(
-    subdomain: string,
-    method: string,
-    path: string,
-    statusCode: number,
-    requestSize: number,
-    responseSize: number,
-    duration: number,
-    userAgent: string | undefined,
-    ip: string
-  ): Promise<void> {
-    const tunnel = this.activeTunnels.get(subdomain);
-
-    if (tunnel) {
-      try {
-        await db('requests').insert({
-          tunnel_id: tunnel.tunnelId,
-          method,
-          path,
-          status_code: statusCode,
-          request_size: requestSize,
-          response_size: responseSize,
-          duration_ms: duration,
-          user_agent: userAgent?.substring(0, 500),
-          ip_address: ip,
-        });
-      } catch (err) {
-        console.error('Error logging request:', err);
-      }
+    if (this.activeTunnels.has(subdomain)) {
+      await redisTunnel.incrementMetrics(subdomain, requestSize, responseSize);
     }
   }
 
@@ -204,22 +143,9 @@ export class TunnelManager {
     res.writeHead(statusCode || 200, responseHeaders);
     res.end(body || '');
 
-    // Log request with complete info if metadata exists
+    // Update metrics if metadata exists
     if (metadata) {
       const responseSize = body ? Buffer.byteLength(body.toString()) : 0;
-      const duration = Date.now() - metadata.startTime;
-
-      this.logRequest(
-        metadata.subdomain,
-        metadata.method,
-        metadata.path,
-        statusCode,
-        metadata.requestSize,
-        responseSize,
-        duration,
-        metadata.userAgent,
-        metadata.ip
-      );
 
       this.incrementRequestCount(
         metadata.subdomain,
@@ -244,13 +170,7 @@ export class TunnelManager {
 
   async getActiveTunnelCount(): Promise<number> {
     try {
-      const result = await db('tunnels')
-        .where({ is_active: true })
-        .whereNull('disconnected_at')
-        .count('* as count')
-        .first();
-
-      return result ? parseInt(result.count as string) : 0;
+      return await redisTunnel.getActiveCount();
     } catch (err) {
       console.error('Error getting active tunnel count:', err);
       return this.activeTunnels.size; // Fallback to memory count
@@ -261,16 +181,10 @@ export class TunnelManager {
   private cleanupInactiveTunnels(): void {
     setInterval(async () => {
       try {
-        console.log(`Cleaning up inactive tunnels...`);
-        const oneHourAgo = new Date(Date.now() - 3600000);
-
-        await db('tunnels')
-          .where({ is_active: true })
-          .where('last_activity_at', '<', oneHourAgo)
-          .update({
-            is_active: false,
-            disconnected_at: new Date(),
-          });
+        const cleaned = await redisTunnel.cleanupInactive();
+        if (cleaned > 0) {
+          console.log(`Cleaned up ${cleaned} inactive tunnels`);
+        }
       } catch (err) {
         console.error('Error cleaning up inactive tunnels:', err);
       }
