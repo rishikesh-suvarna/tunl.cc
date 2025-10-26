@@ -39,23 +39,24 @@ export function setupWebSocketServer(
       messageCount = 0;
     }, 1000);
 
-    // Heartbeat - respond to pings from client
-    ws.on('ping', () => {
-      isAlive = true;
-      ws.pong(); // Respond to client pings
-    });
-
-    // Heartbeat check - ensure client is still alive
+    // Server sends ping to client every 30 seconds
     const heartbeatInterval = setInterval(() => {
-      if (isAlive === false) {
-        logger.warn('Client heartbeat failed - terminating connection');
-        clearInterval(heartbeatInterval);
-        return ws.terminate();
-      }
+      if (ws.readyState === WebSocket.OPEN) {
+        if (isAlive === false) {
+          logger.warn('Client failed to respond to ping - terminating');
+          clearInterval(heartbeatInterval);
+          return ws.terminate();
+        }
 
-      isAlive = false;
-      ws.ping(); // Server also pings client
-    }, 15000); // Check every 15 seconds
+        isAlive = false;
+        ws.ping();
+      }
+    }, 30000); // Ping every 30 seconds
+
+    // Client responds with pong (automatic in ws library)
+    ws.on('pong', () => {
+      isAlive = true;
+    });
 
     logger.info(`Client connected from ${ip}`);
 
@@ -106,10 +107,6 @@ export function setupWebSocketServer(
       } catch (err) {
         logger.error('Error processing message:', (err as Error).message);
       }
-    });
-
-    ws.on('pong', () => {
-      isAlive = true;
     });
 
     ws.on('close', (code: number, reason: Buffer) => {

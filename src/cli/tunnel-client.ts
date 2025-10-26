@@ -30,7 +30,6 @@ export class TunnelClient {
   private publicUrl: string | null;
   private shouldReconnect: boolean;
   private pingInterval: NodeJS.Timeout | null;
-  private pongTimeout: NodeJS.Timeout | null;
   private hasFatalError: boolean;
 
   constructor(
@@ -56,7 +55,6 @@ export class TunnelClient {
     this.publicUrl = null;
     this.shouldReconnect = true;
     this.pingInterval = null;
-    this.pongTimeout = null;
     this.hasFatalError = false;
   }
 
@@ -141,14 +139,6 @@ export class TunnelClient {
           process.exit(0);
         }
       });
-
-      this.ws.on('pong', () => {
-        // Clear the timeout when we receive a pong
-        if (this.pongTimeout) {
-          clearTimeout(this.pongTimeout);
-          this.pongTimeout = null;
-        }
-      });
     });
   }
 
@@ -182,38 +172,33 @@ export class TunnelClient {
   }
 
   private startHeartbeat(): void {
-    // Send ping every 15 seconds (more frequent than 30s)
+    // Server sends pings every 30 seconds
+    // ws library automatically responds with pongs
+    // We just need to detect if server stops pinging us
+
+    let lastPing = Date.now();
+
+    // Track when we receive pings from server
+    this.ws?.on('ping', () => {
+      lastPing = Date.now();
+    });
+
+    // Check if we've received a ping recently
     this.pingInterval = setInterval(() => {
-      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-        // Check if we're still waiting for a previous pong
-        if (this.pongTimeout) {
-          console.log(
-            '⚠ Previous heartbeat not acknowledged - connection may be dead'
-          );
-          this.ws.terminate(); // Force close the connection
-          return;
-        }
+      const timeSinceLastPing = Date.now() - lastPing;
 
-        this.ws.ping();
-
-        // Set timeout for pong response (3 seconds)
-        this.pongTimeout = setTimeout(() => {
-          console.log('✗ Heartbeat timeout - no response from server');
-          this.pongTimeout = null;
-          this.ws?.terminate(); // Force close instead of graceful close
-        }, 3000);
+      // Server pings every 30s, so if we haven't received one in 45s, something is wrong
+      if (timeSinceLastPing > 45000) {
+        console.log('✗ No ping from server for 45 seconds - connection dead');
+        this.ws?.terminate();
       }
-    }, 15000); // Check every 15 seconds
+    }, 10000); // Check every 10 seconds
   }
 
   private stopHeartbeat(): void {
     if (this.pingInterval) {
       clearInterval(this.pingInterval);
       this.pingInterval = null;
-    }
-    if (this.pongTimeout) {
-      clearTimeout(this.pongTimeout);
-      this.pongTimeout = null;
     }
   }
 
