@@ -14,6 +14,25 @@ export class TunnelManager {
     this.activeTunnels = new Map();
     this.pendingRequests = new Map();
     this.cleanupInactiveTunnels();
+    this.initializeServer();
+  }
+
+  private async initializeServer(): Promise<void> {
+    try {
+      console.log('Initializing tunnel server...');
+
+      // On server startup, clear all tunnels from Redis
+      // This is necessary because WebSocket connections are lost on restart
+      const cleared = await redisTunnel.clearAll();
+
+      if (cleared > 0) {
+        console.log(`Cleared ${cleared} stale tunnels from previous session`);
+      }
+
+      console.log('Tunnel server ready');
+    } catch (err) {
+      console.error('Error initializing server:', err);
+    }
   }
 
   generateSubdomain(): string {
@@ -29,13 +48,24 @@ export class TunnelManager {
     try {
       // Check if subdomain already active in memory
       if (this.activeTunnels.has(subdomain)) {
-        return { success: false, error: 'Subdomain already taken' };
+        // Check if the WebSocket is still alive
+        const existingTunnel = this.activeTunnels.get(subdomain);
+        if (existingTunnel && existingTunnel.ws.readyState === WebSocket.OPEN) {
+          return { success: false, error: 'Subdomain already taken' };
+        } else {
+          // WebSocket is dead, clean it up
+          console.log(`Cleaning up stale tunnel in memory: ${subdomain}`);
+          this.activeTunnels.delete(subdomain);
+          await redisTunnel.remove(subdomain);
+        }
       }
 
       // Check if subdomain exists in Redis
-      const existingTunnel = await redisTunnel.exists(subdomain);
+      const existingTunnel = await redisTunnel.get(subdomain);
       if (existingTunnel) {
-        return { success: false, error: 'Subdomain already taken' };
+        // Redis has it but memory doesn't - this is a stale entry from server restart
+        console.log(`Cleaning up stale tunnel in Redis: ${subdomain}`);
+        await redisTunnel.remove(subdomain);
       }
 
       let userId: string | null = null;
@@ -53,7 +83,7 @@ export class TunnelManager {
         userId = user.id;
 
         if (!userId) {
-          return { success: false, error: 'User ID not found' };
+          return { success: false, error: 'Invalid user ID' };
         }
 
         // Check user's tunnel limit using Redis
@@ -129,7 +159,7 @@ export class TunnelManager {
     clearTimeout(pending.timeout);
     const { res, metadata } = pending;
 
-    // Use writeHead and end instead of Express methods
+    // Use writeHead and end instead of Express methods to avoid dependency on Framework
     const responseHeaders: any = { 'Content-Type': 'text/html' };
 
     if (headers) {
@@ -188,7 +218,7 @@ export class TunnelManager {
       } catch (err) {
         console.error('Error cleaning up inactive tunnels:', err);
       }
-    }, 300000); // Run every 5 minutes
+    }, 3600000); // Run every 1 hour
   }
 
   get pendingRequestsMap(): Map<string, PendingRequest> {
