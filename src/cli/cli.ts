@@ -104,7 +104,7 @@ export function parseArgs(): CliConfig {
 function showHelp(): void {
   console.log(`
 ╔════════════════════════════════════════════════════════════╗
-║                    Tunl - Tunnel CLI                       ║
+║                    Tunl.cc - Tunnel CLI                    ║
 ╚════════════════════════════════════════════════════════════╝
 
 USAGE:
@@ -117,7 +117,7 @@ EXAMPLES:
   tunl 8080 --api-key <key>        # API key, random subdomain
 
 ARGUMENTS:
-  <local-port>    Port of your local server (1-65535)
+  <local-port>    Port of your local server (1024-65535)
   [subdomain]     Optional custom subdomain (3-63 chars)
 
 OPTIONS:
