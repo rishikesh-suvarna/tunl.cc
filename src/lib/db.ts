@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 import knex, { Knex } from 'knex';
+import { NODE_ENV } from '../config/app.config';
 
 const knexConfig = require('../../knexfile');
 
-const environment = process.env.NODE_ENV || 'development';
+const environment = NODE_ENV || 'development';
 const config = knexConfig[environment];
 
 if (!config) {

@@ -40,11 +40,6 @@ export function parseArgs(): CliConfig {
     }
   }
 
-  // Check for API key in environment
-  if (!apiKey && process.env.TUNL_API_KEY) {
-    apiKey = process.env.TUNL_API_KEY;
-  }
-
   if (filteredArgs.length === 0) {
     showHelp();
     process.exit(1);
@@ -72,8 +67,7 @@ export function parseArgs(): CliConfig {
     process.exit(1);
   }
 
-  const tunnelServer =
-    process.env.TUNNEL_SERVER || TUNNEL_SERVER || 'wss://tunl.cc';
+  const tunnelServer = TUNNEL_SERVER || 'wss://tunl.cc';
 
   console.log('\n╔════════════════════════════════════════╗');
   console.log('║          Tunnel Configuration          ║');
@@ -127,7 +121,6 @@ OPTIONS:
 
 ENVIRONMENT VARIABLES:
   TUNNEL_SERVER          Tunnel server URL (default: wss://tunl.cc)
-  TUNL_API_KEY          API key (alternative to --api-key flag)
 
 FEATURES:
   • Automatic reconnection with exponential backoff

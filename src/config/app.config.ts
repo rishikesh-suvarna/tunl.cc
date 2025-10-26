@@ -8,13 +8,14 @@ const getEnvVar = (
   defaultValue: string | undefined = undefined
 ) => {
   const value = process.env[key] || defaultValue;
-  if (!value) {
+  if (value === undefined || value === null) {
     throw new Error(`Missing ${key}. Please set it in the .env file.`);
   }
 
   return value;
 };
 
+export const NODE_ENV = getEnvVar('NODE_ENV', 'development');
 export const PORT = parseInt(getEnvVar('PORT', '9000'), 10);
 export const BASE_DOMAIN = getEnvVar('BASE_DOMAIN', 'localhost:9000');
 export const HTTPS = getEnvVar('HTTPS', 'false') === 'true';

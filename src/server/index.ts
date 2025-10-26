@@ -2,6 +2,7 @@
 
 import http from 'http';
 import WebSocket from 'ws';
+import { BASE_DOMAIN, HTTPS, PORT } from '../config/app.config';
 import { testConnection } from '../lib/db';
 import { ServerConfig } from '../shared/types';
 import { handleTunnelRequest } from './http';
@@ -12,9 +13,9 @@ import { setupWebSocketServer } from './websocket';
 const logger = new Logger('Server');
 
 const config: ServerConfig = {
-  port: parseInt(process.env.PORT || '3000', 10),
-  baseDomain: process.env.BASE_DOMAIN || 'localhost:3000',
-  https: process.env.HTTPS === 'true',
+  port: PORT || 3000,
+  baseDomain: BASE_DOMAIN || 'localhost:3000',
+  https: HTTPS,
 };
 
 async function startServer() {
