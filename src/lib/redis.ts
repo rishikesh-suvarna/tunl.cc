@@ -190,6 +190,19 @@ export const redisTunnel = {
 
     return cleaned;
   },
+
+  // Clear all tunnels (used on server startup)
+  async clearAll(): Promise<number> {
+    const allTunnels = await redis.smembers(ACTIVE_TUNNELS_SET);
+    let cleared = 0;
+
+    for (const subdomain of allTunnels) {
+      await this.remove(subdomain);
+      cleared++;
+    }
+
+    return cleared;
+  },
 };
 
 export { redis };
