@@ -2,7 +2,7 @@
 
 import http from 'http';
 import WebSocket from 'ws';
-import { testConnection } from '../lib/connection';
+import { testConnection } from '../lib/db';
 import { ServerConfig } from '../shared/types';
 import { handleTunnelRequest } from './http';
 import { TunnelManager } from './tunnel-manager';

@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { IncomingHttpHeaders, ServerResponse } from 'http';
 import WebSocket from 'ws';
-import { db } from '../lib/connection';
+import { db } from '../lib/db';
 import { SUBDOMAIN_LENGTH } from '../shared/constants';
 import { PendingRequest, RegisterResult } from '../shared/types';
 
