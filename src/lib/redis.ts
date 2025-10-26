@@ -1,11 +1,17 @@
 import Redis from 'ioredis';
+import {
+  REDIS_DB,
+  REDIS_HOST,
+  REDIS_PASSWORD,
+  REDIS_PORT,
+} from '../config/app.config';
 
 // Redis client configuration
 const redis = new Redis({
-  host: process.env.REDIS_HOST || 'localhost',
-  port: parseInt(process.env.REDIS_PORT || '6379'),
-  password: process.env.REDIS_PASSWORD,
-  db: parseInt(process.env.REDIS_DB || '0'),
+  host: REDIS_HOST || 'localhost',
+  port: REDIS_PORT || 6379,
+  password: REDIS_PASSWORD,
+  db: REDIS_DB || 0,
   retryStrategy: (times: number) => {
     const delay = Math.min(times * 50, 2000);
     return delay;
