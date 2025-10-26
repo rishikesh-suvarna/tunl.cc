@@ -1,3 +1,4 @@
+import pkg from '../../package.json';
 import { TUNNEL_SERVER } from '../config/app.config';
 
 export interface CliConfig {
@@ -29,8 +30,7 @@ export function parseArgs(): CliConfig {
       showHelp();
       process.exit(0);
     } else if (arg === '--version' || arg === '-v') {
-      // TODO: Replace with dynamic version from package.json if needed
-      console.log('Tunl version 1.1.1');
+      console.log(`Tunl version ${pkg.version}`);
       process.exit(0);
     } else {
       if (!arg) {
