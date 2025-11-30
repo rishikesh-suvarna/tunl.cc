@@ -16,29 +16,35 @@ async function gracefulShutdown(
 
   const closePromises: Promise<void>[] = [];
 
+  // Track open sockets
+  const openSockets = new Set<WebSocket>();
   wss.clients.forEach((ws: WebSocket) => {
+    openSockets.add(ws);
     closePromises.push(
       new Promise<void>((resolve) => {
-        // Set a timeout in case close hangs
-        const timeout = setTimeout(() => {
-          logger.warn('WebSocket close timeout - terminating');
-          ws.terminate();
-          resolve();
-        }, 5000);
-
         ws.on('close', () => {
-          clearTimeout(timeout);
+          openSockets.delete(ws);
           resolve();
         });
-
         // Send close frame with reason
         ws.close(1001, 'Server shutting down');
       })
     );
   });
-
-  // Wait for all WebSockets to close (max 5 seconds)
-  await Promise.all(closePromises);
+  // Wait for all WebSockets to close, or force terminate after 5 seconds
+  const timeoutMs = 5000;
+  const timeoutPromise = new Promise<void>((resolve) => {
+    setTimeout(() => {
+      if (openSockets.size > 0) {
+        logger.warn(
+          `WebSocket close timeout - terminating ${openSockets.size} sockets`
+        );
+        openSockets.forEach((ws) => ws.terminate());
+      }
+      resolve();
+    }, timeoutMs);
+  });
+  await Promise.race([Promise.all(closePromises), timeoutPromise]);
   logger.info('All WebSocket connections closed');
 
   // Step 2: Close the WebSocket server
