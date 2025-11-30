@@ -249,6 +249,7 @@ export class TunnelClient {
           }
         });
       } catch (err) {
+        console.log(`  Error sending ping: ${(err as Error).message}`);
         this.ws?.terminate();
       }
     }, 30000); // Check every 30 seconds
