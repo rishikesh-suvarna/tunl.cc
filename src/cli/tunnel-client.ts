@@ -25,12 +25,14 @@ export class TunnelClient {
   private isConnected: boolean;
   private isReconnecting: boolean;
   private reconnectAttempts: number;
+  private maxReconnectAttempts: number;
   private reconnectDelay: number;
   private reconnectOptions: ReconnectOptions;
   private publicUrl: string | null;
   private shouldReconnect: boolean;
-  private pingInterval: NodeJS.Timeout | null;
+  private heartbeatInterval: NodeJS.Timeout | null;
   private hasFatalError: boolean;
+  private lastPongTime: number;
 
   constructor(
     localPort: number,
@@ -46,16 +48,18 @@ export class TunnelClient {
     this.isConnected = false;
     this.isReconnecting = false;
     this.reconnectAttempts = 0;
+    this.maxReconnectAttempts = 5;
     this.reconnectDelay = 1000;
     this.reconnectOptions = {
       initialDelay: 1000,
-      maxDelay: 30000,
+      maxDelay: 60000,
       factor: 1.5,
     };
     this.publicUrl = null;
     this.shouldReconnect = true;
-    this.pingInterval = null;
+    this.heartbeatInterval = null;
     this.hasFatalError = false;
+    this.lastPongTime = 0;
   }
 
   async connect(): Promise<void> {
@@ -69,6 +73,7 @@ export class TunnelClient {
       console.log(`Local server: http://localhost:${this.localPort}`);
       console.log(`Tunnel server: ${this.tunnelServer}`);
 
+      // TODO
       if (this.apiKey) {
         console.log('Using API key for authentication');
       }
@@ -87,6 +92,15 @@ export class TunnelClient {
       this.ws.on('open', () => {
         clearTimeout(connectionTimeout);
         console.log('Connected to tunnel server');
+
+        // Enable TCP keepalive for faster dead connection detection
+        const socket = (this.ws as any)?._socket;
+        if (socket && socket.setKeepAlive) {
+          // Send keepalive probes after 10s of idle
+          socket.setKeepAlive(true, 10000);
+          console.log('TCP keepalive enabled');
+        }
+
         this.isConnected = true;
         this.register();
         this.startHeartbeat();
@@ -159,6 +173,10 @@ export class TunnelClient {
 
       this.connect().catch((err) => {
         console.error('Reconnection failed:', err.message);
+        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+          console.error('Maximum reconnection attempts reached. Exiting.');
+          process.exit(1);
+        }
 
         // Exponential backoff
         this.reconnectDelay = Math.min(
@@ -172,34 +190,78 @@ export class TunnelClient {
   }
 
   private startHeartbeat(): void {
-    // Server sends pings every 30 seconds
-    // ws library automatically responds with pongs
-    // We just need to detect if server stops pinging us
+    // Initialize last pong time to now (we just connected successfully)
+    this.lastPongTime = Date.now();
 
-    let lastPing = Date.now();
+    // Clean up any existing heartbeat before starting new one
+    this.stopHeartbeat();
 
-    // Track when we receive pings from server
-    this.ws?.on('ping', () => {
-      lastPing = Date.now();
-    });
+    // ====================================================================
+    // PONG HANDLER: Called when server responds to our ping
+    // ====================================================================
+    const pongHandler = () => {
+      this.lastPongTime = Date.now();
+    };
 
-    // Check if we've received a ping recently
-    this.pingInterval = setInterval(() => {
-      const timeSinceLastPing = Date.now() - lastPing;
+    // Remove any existing handlers to prevent duplicates
+    this.ws?.removeAllListeners('pong');
+    this.ws?.on('pong', pongHandler);
 
-      // Server pings every 30s, so if we haven't received one in 45s, something is wrong
-      if (timeSinceLastPing > 45000) {
-        console.log('✗ No ping from server for 45 seconds - connection dead');
+    // ====================================================================
+    // HEARTBEAT LOOP: Sends pings and checks for responses
+    // ====================================================================
+    this.heartbeatInterval = setInterval(() => {
+      if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+        console.log('WebSocket not in OPEN state - stopping heartbeat');
+        this.stopHeartbeat();
+        return;
+      }
+
+      const now = Date.now();
+      const timeSincePong = now - this.lastPongTime;
+
+      // ================================================================
+      // CRITICAL: Check if we've received a pong recently
+      // If more than 90 seconds have passed since last pong, connection is dead
+      // ================================================================
+      if (timeSincePong > 90000) {
+        console.log(
+          `\nWARNING: No pong for ${(timeSincePong / 1000).toFixed(1)}s`
+        );
+        console.log('Server is not responding - terminating connection');
+
+        if (this.ws) {
+          this.ws.terminate();
+        }
+        return;
+      }
+
+      // ================================================================
+      // Send ping to server
+      // Note: The callback only fires for immediate send errors,
+      // NOT for lack of response. We detect lack of response above.
+      // ================================================================
+      try {
+        this.ws.ping((err: Error | undefined) => {
+          // This callback fires immediately if there's a send error
+          if (err) {
+            this.ws?.terminate();
+          }
+        });
+      } catch (err) {
         this.ws?.terminate();
       }
-    }, 10000); // Check every 10 seconds
+    }, 30000); // Check every 30 seconds
   }
 
   private stopHeartbeat(): void {
-    if (this.pingInterval) {
-      clearInterval(this.pingInterval);
-      this.pingInterval = null;
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
     }
+
+    // Remove listeners to prevent memory leaks
+    this.ws?.removeAllListeners('pong');
   }
 
   private register(): void {
@@ -252,12 +314,12 @@ export class TunnelClient {
 
     // Reset reconnect attempts after successful connection
     if (wasReconnecting) {
-      console.log('✓ Reconnection successful!');
+      console.log('Reconnection successful!');
       this.reconnectAttempts = 0;
       this.reconnectDelay = this.reconnectOptions.initialDelay;
     }
 
-    console.log('\n✓ Tunnel established!');
+    console.log('\nTunnel established!');
     console.log(`Public URL: ${msg.url}`);
     console.log(`Forwarding to: http://localhost:${this.localPort}`);
     console.log('\nWaiting for connections...\n');
@@ -270,7 +332,7 @@ export class TunnelClient {
 
     // Check if connection is still open before processing
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      console.log(`⚠ Received request but connection is closed - ignoring`);
+      console.log(`Received request but connection is closed - ignoring`);
       return;
     }
 
@@ -280,7 +342,7 @@ export class TunnelClient {
 
     forwardToLocal(this.localPort, msg, (response) => {
       if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-        console.log('  ⚠ Cannot send response - connection closed');
+        console.log('  Cannot send response - connection closed');
         return;
       }
 
@@ -293,18 +355,18 @@ export class TunnelClient {
       };
 
       const duration = Date.now() - startTime;
-      console.log(`  ← ${response.statusCode} (${duration}ms)\n`);
+      console.log(`  ${response.statusCode} (${duration}ms)\n`);
 
       try {
         this.ws.send(JSON.stringify(responseMsg));
       } catch (err) {
-        console.error('  ✗ Error sending response:', (err as Error).message);
+        console.error('  Error sending response:', (err as Error).message);
       }
     });
   }
 
   private handleError(msg: ErrorMessage): void {
-    console.error('\n✗ Error from server:', msg.message);
+    console.error('\nError from server:', msg.message);
 
     // Check if this is a fatal error that shouldn't trigger reconnection
     const fatalErrors = [
@@ -322,7 +384,7 @@ export class TunnelClient {
     );
 
     if (isFatal) {
-      console.error('✗ Fatal error - cannot continue');
+      console.error('Fatal error - cannot continue');
       this.hasFatalError = true;
       this.shouldReconnect = false;
 
