@@ -131,13 +131,14 @@ export function setupWebSocketServer(
   // SINGLE server-wide heartbeat interval
   // Server sends pings to all clients every 30 seconds
   const heartbeatInterval = setInterval(() => {
+    const logger = new Logger('Heartbeat');
     wss.clients.forEach((ws: WebSocket) => {
       const extWs = ws as ExtendedWebSocket;
 
       if (ws.readyState === WebSocket.OPEN) {
         // If client didn't respond to previous ping, terminate
         if (extWs.isAlive === false) {
-          console.log(
+          logger.warn(
             `Terminating dead connection for ${extWs.subdomain || 'unknown'}`
           );
           return ws.terminate();
