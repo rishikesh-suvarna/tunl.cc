@@ -5,6 +5,7 @@ import WebSocket from 'ws';
 import { BASE_DOMAIN, HTTPS, PORT } from '../config/app.config';
 import { testConnection } from '../lib/db';
 import { ServerConfig } from '../shared/types';
+import { gracefulShutdown } from './graceful-shutdown';
 import { handleTunnelRequest } from './http';
 import { TunnelManager } from './tunnel-manager';
 import { Logger } from './utils/logger';
@@ -43,20 +44,11 @@ async function startServer() {
     logger.info(`Example: http://myapp.${config.baseDomain}`);
   });
 
-  process.on('SIGTERM', async () => {
-    logger.info('SIGTERM received, shutting down gracefully');
-    server.close(() => {
-      logger.info('Server closed');
-      process.exit(0);
-    });
-  });
-
-  process.on('SIGINT', async () => {
-    logger.info('SIGINT received, shutting down gracefully');
-    server.close(() => {
-      logger.info('Server closed');
-      process.exit(0);
-    });
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM', wss, server));
+  process.on('SIGINT', () => gracefulShutdown('SIGINT', wss, server));
+  process.on('unhandledRejection', (reason, promise) => {
+    logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    gracefulShutdown('unhandledRejection', wss, server);
   });
 }
 
@@ -64,5 +56,3 @@ startServer().catch((err) => {
   logger.error('Failed to start server:', err);
   process.exit(1);
 });
-
-export {};
