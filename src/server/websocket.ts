@@ -143,6 +143,10 @@ export function setupWebSocketServer(
           );
           return ws.terminate();
         }
+        // Treat undefined isAlive (new connections) as alive
+        if (typeof extWs.isAlive === 'undefined') {
+          extWs.isAlive = true;
+        }
 
         // Mark as not alive and send ping
         extWs.isAlive = false;
