@@ -44,11 +44,17 @@ async function startServer() {
     logger.info(`Example: http://myapp.${config.baseDomain}`);
   });
 
-  process.on('SIGTERM', () => gracefulShutdown('SIGTERM', wss, server));
-  process.on('SIGINT', () => gracefulShutdown('SIGINT', wss, server));
-  process.on('unhandledRejection', (reason, promise) => {
+  process.on(
+    'SIGTERM',
+    async () => await gracefulShutdown('SIGTERM', wss, server)
+  );
+  process.on(
+    'SIGINT',
+    async () => await gracefulShutdown('SIGINT', wss, server)
+  );
+  process.on('unhandledRejection', async (reason, promise) => {
     logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
-    gracefulShutdown('unhandledRejection', wss, server);
+    await gracefulShutdown('unhandledRejection', wss, server);
   });
 }
 
