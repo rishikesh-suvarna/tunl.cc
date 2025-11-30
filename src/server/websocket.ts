@@ -13,24 +13,31 @@ import { TunnelManager } from './tunnel-manager';
 import { Logger } from './utils/logger';
 import { isValidSubdomain } from './utils/validation';
 
+// Extend WebSocket type to include isAlive property
+interface ExtendedWebSocket extends WebSocket {
+  isAlive: boolean;
+  subdomain?: string;
+}
+
 export function setupWebSocketServer(
   wss: WebSocket.Server,
   tunnelManager: TunnelManager,
   config: ServerConfig
 ): void {
   wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
+    const extWs = ws as ExtendedWebSocket;
     const ip = req.socket.remoteAddress || 'unknown';
     let subdomain: string | null = null;
     const clientId = crypto.randomBytes(8).toString('hex');
     const logger = new Logger(clientId);
 
-    // Track if client is alive
-    let isAlive = true;
+    // Initialize isAlive flag
+    extWs.isAlive = true;
 
     // Connection timeout
     const connectionTimeout = setTimeout(() => {
       logger.warn('Connection timeout - no registration');
-      ws.terminate(); // Use terminate() instead of close() for immediate disconnect
+      ws.terminate();
     }, 10000);
 
     // Message rate limiting
@@ -39,23 +46,17 @@ export function setupWebSocketServer(
       messageCount = 0;
     }, 1000);
 
-    // Server sends ping to client every 30 seconds
-    const heartbeatInterval = setInterval(() => {
-      if (ws.readyState === WebSocket.OPEN) {
-        if (isAlive === false) {
-          logger.warn('Client failed to respond to ping - terminating');
-          clearInterval(heartbeatInterval);
-          return ws.terminate();
-        }
-
-        isAlive = false;
-        ws.ping();
-      }
-    }, 30000); // Ping every 30 seconds
-
-    // Client responds with pong (automatic in ws library)
+    // Handle pong responses from client (when server sends ping)
     ws.on('pong', () => {
-      isAlive = true;
+      extWs.isAlive = true;
+    });
+
+    // Handle ping from client (client actively checking connection)
+    // ws library automatically sends pong back, but we can log it
+    ws.on('ping', () => {
+      // Client is checking if we're alive - this is good!
+      // ws library will automatically respond with pong
+      extWs.isAlive = true; // Mark as alive since client is actively pinging
     });
 
     logger.info(`Client connected from ${ip}`);
@@ -64,7 +65,6 @@ export function setupWebSocketServer(
       // Rate limit messages
       messageCount++;
       if (messageCount > 100) {
-        // Max 100 messages per second
         logger.warn('Message rate limit exceeded');
         ws.close(1008, 'Rate limit exceeded');
         return;
@@ -72,7 +72,6 @@ export function setupWebSocketServer(
 
       // Size limit
       if (data.toString().length > 1024 * 1024) {
-        // 1MB
         logger.warn('Message too large');
         ws.close(1009, 'Message too large');
         return;
@@ -93,6 +92,7 @@ export function setupWebSocketServer(
               ip,
               (sub: string) => {
                 subdomain = sub;
+                extWs.subdomain = sub;
               }
             );
             break;
@@ -112,7 +112,6 @@ export function setupWebSocketServer(
     ws.on('close', (code: number, reason: Buffer) => {
       clearTimeout(connectionTimeout);
       clearInterval(messageRateLimitWindow);
-      clearInterval(heartbeatInterval);
 
       if (subdomain) {
         tunnelManager.unregister(subdomain);
@@ -126,28 +125,34 @@ export function setupWebSocketServer(
 
     ws.on('error', (err: Error) => {
       logger.error('WebSocket error:', err.message);
-      // Don't try to close here, let the close event handle cleanup
     });
   });
 
-  // Server-level ping interval to detect dead connections
-  const serverPingInterval = setInterval(() => {
+  // SINGLE server-wide heartbeat interval
+  // Server sends pings to all clients every 30 seconds
+  const heartbeatInterval = setInterval(() => {
     wss.clients.forEach((ws: WebSocket) => {
+      const extWs = ws as ExtendedWebSocket;
+
       if (ws.readyState === WebSocket.OPEN) {
-        // Check if custom property exists (you might need to extend WebSocket type)
-        const extWs = ws as WebSocket & { isAlive?: boolean };
+        // If client didn't respond to previous ping, terminate
         if (extWs.isAlive === false) {
+          console.log(
+            `Terminating dead connection for ${extWs.subdomain || 'unknown'}`
+          );
           return ws.terminate();
         }
+
+        // Mark as not alive and send ping
         extWs.isAlive = false;
         ws.ping();
       }
     });
-  }, 30000); // Server-wide ping every 30 seconds
+  }, 30000); // Ping every 30 seconds
 
   // Clean up on server shutdown
   wss.on('close', () => {
-    clearInterval(serverPingInterval);
+    clearInterval(heartbeatInterval);
   });
 }
 
