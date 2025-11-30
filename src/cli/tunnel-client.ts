@@ -161,6 +161,11 @@ export class TunnelClient {
       return;
     }
 
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.error('Max reconnect attempts reached. Exiting...');
+      process.exit(1);
+    }
+
     this.isReconnecting = true;
     this.reconnectAttempts++;
 
@@ -173,10 +178,6 @@ export class TunnelClient {
 
       this.connect().catch((err) => {
         console.error('Reconnection failed:', err.message);
-        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-          console.error('Maximum reconnection attempts reached. Exiting.');
-          process.exit(1);
-        }
 
         // Exponential backoff
         this.reconnectDelay = Math.min(
