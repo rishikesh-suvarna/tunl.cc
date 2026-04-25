@@ -1,7 +1,11 @@
 import crypto from 'crypto';
 import { IncomingMessage } from 'http';
 import WebSocket from 'ws';
-import { MESSAGE_TYPES, MessageType } from '../shared/constants';
+import {
+  MAX_WS_MESSAGE_SIZE,
+  MESSAGE_TYPES,
+  MessageType,
+} from '../shared/constants';
 import {
   ErrorMessage,
   RegisteredMessage,
@@ -70,8 +74,12 @@ export function setupWebSocketServer(
         return;
       }
 
-      // Size limit
-      if (data.toString().length > 1024 * 1024) {
+      // Defensive app-level size check; ws library also enforces maxPayload
+      // at the frame level via the WebSocket.Server constructor option.
+      const dataLength = Array.isArray(data)
+        ? data.reduce((acc, b) => acc + b.length, 0)
+        : (data as Buffer).length;
+      if (dataLength > MAX_WS_MESSAGE_SIZE) {
         logger.warn('Message too large');
         ws.close(1009, 'Message too large');
         return;
@@ -220,6 +228,7 @@ function handleResponse(
     msg.requestId,
     msg.statusCode,
     msg.headers,
-    msg.body
+    msg.body,
+    msg.bodyEncoding
   );
 }

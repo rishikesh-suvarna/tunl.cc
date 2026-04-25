@@ -4,7 +4,7 @@ import WebSocket from 'ws';
 import { db } from '../lib/db';
 import { redisTunnel } from '../lib/redis';
 import { SUBDOMAIN_LENGTH } from '../shared/constants';
-import { PendingRequest, RegisterResult } from '../shared/types';
+import { BodyEncoding, PendingRequest, RegisterResult } from '../shared/types';
 
 export class TunnelManager {
   private activeTunnels: Map<string, { ws: WebSocket }>;
@@ -150,7 +150,8 @@ export class TunnelManager {
     requestId: string,
     statusCode: number,
     headers?: IncomingHttpHeaders,
-    body?: any
+    body?: string,
+    bodyEncoding?: BodyEncoding
   ): boolean {
     const pending = this.pendingRequests.get(requestId);
 
@@ -159,23 +160,29 @@ export class TunnelManager {
     clearTimeout(pending.timeout);
     const { res, metadata } = pending;
 
-    // Use writeHead and end instead of Express methods to avoid dependency on Framework
-    const responseHeaders: any = { 'Content-Type': 'text/html' };
-
+    const responseHeaders: any = {};
     if (headers) {
       Object.entries(headers).forEach(([k, v]) => {
         if (v !== undefined) {
-          responseHeaders[k] = v;
+          responseHeaders[k.toLowerCase()] = v;
         }
       });
     }
 
-    res.writeHead(statusCode || 200, responseHeaders);
-    res.end(body || '');
+    let bodyToWrite: Buffer | string = '';
+    if (body) {
+      bodyToWrite =
+        bodyEncoding === 'base64' ? Buffer.from(body, 'base64') : body;
+    }
 
-    // Update metrics if metadata exists
+    res.writeHead(statusCode || 200, responseHeaders);
+    res.end(bodyToWrite);
+
     if (metadata) {
-      const responseSize = body ? Buffer.byteLength(body.toString()) : 0;
+      const responseSize =
+        bodyToWrite instanceof Buffer
+          ? bodyToWrite.length
+          : Buffer.byteLength(bodyToWrite);
 
       this.incrementRequestCount(
         metadata.subdomain,

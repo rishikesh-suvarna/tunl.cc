@@ -2,6 +2,9 @@ export const DEFAULT_PORT = 3000;
 export const DEFAULT_TIMEOUT = 30000;
 export const SUBDOMAIN_LENGTH = 8;
 
+export const MAX_BODY_SIZE = 5 * 1024 * 1024;
+export const MAX_WS_MESSAGE_SIZE = 10 * 1024 * 1024;
+
 export enum MessageType {
   REGISTER = 'register',
   REGISTERED = 'registered',

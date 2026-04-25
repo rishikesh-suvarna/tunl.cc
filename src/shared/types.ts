@@ -39,13 +39,16 @@ export interface RegisteredMessage {
   url: string;
 }
 
+export type BodyEncoding = 'base64';
+
 export interface RequestMessage {
   type: MessageType.REQUEST;
   requestId: string;
   method: string;
   path: string;
   headers: IncomingHttpHeaders;
-  body?: any;
+  body?: string;
+  bodyEncoding?: BodyEncoding;
 }
 
 export interface ResponseMessage {
@@ -53,7 +56,8 @@ export interface ResponseMessage {
   requestId: string;
   statusCode: number;
   headers?: IncomingHttpHeaders;
-  body?: any;
+  body?: string;
+  bodyEncoding?: BodyEncoding;
 }
 
 export interface ErrorMessage {

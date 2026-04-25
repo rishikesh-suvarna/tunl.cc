@@ -1,10 +1,11 @@
 import http, { IncomingHttpHeaders } from 'http';
-import { RequestMessage } from '../shared/types';
+import { BodyEncoding, RequestMessage } from '../shared/types';
 
 export interface ProxyResponse {
   statusCode: number;
   headers: IncomingHttpHeaders;
-  body: string;
+  body?: string;
+  bodyEncoding?: BodyEncoding;
 }
 
 const DEFAULT_PROXY_TIMEOUT = 30000; // 30 seconds
@@ -29,7 +30,6 @@ export function forwardToLocal(
   delete cleanHeaders.trailer;
   delete cleanHeaders.upgrade;
 
-  // Decode base64 body if present
   let requestBody: Buffer | undefined;
   if (body) {
     try {
@@ -37,15 +37,10 @@ export function forwardToLocal(
       cleanHeaders['content-length'] = requestBody.length.toString();
     } catch (err) {
       console.error('  ✗ Error decoding request body:', (err as Error).message);
-      callback({
-        statusCode: 400,
-        headers: {},
-        body: 'Bad Request: Invalid body encoding',
-      });
+      callback(plainTextResponse(400, 'Bad Request: Invalid body encoding'));
       return;
     }
   } else {
-    // Ensure content-length is 0 if no body
     delete cleanHeaders['content-length'];
   }
 
@@ -69,45 +64,51 @@ export function forwardToLocal(
       // Prevent memory issues with very large responses (max 100MB)
       if (totalBytes > 100 * 1024 * 1024) {
         req.destroy();
-        callback({
-          statusCode: 413,
-          headers: {},
-          body: 'Response too large',
-        });
+        callback(plainTextResponse(413, 'Response too large'));
       }
     });
 
     res.on('end', () => {
       try {
-        const responseBody = Buffer.concat(responseChunks).toString('utf-8');
+        const buffer = Buffer.concat(responseChunks);
 
-        // Clean response headers
         const responseHeaders = { ...res.headers };
         delete responseHeaders.connection;
         delete responseHeaders['keep-alive'];
+        delete responseHeaders['transfer-encoding'];
+        delete responseHeaders['proxy-connection'];
+        delete responseHeaders['proxy-authenticate'];
+        delete responseHeaders.te;
+        delete responseHeaders.trailer;
+        delete responseHeaders.upgrade;
 
-        callback({
-          statusCode: res.statusCode || 500,
-          headers: responseHeaders,
-          body: responseBody,
-        });
+        if (buffer.length > 0) {
+          callback({
+            statusCode: res.statusCode || 500,
+            headers: responseHeaders,
+            body: buffer.toString('base64'),
+            bodyEncoding: 'base64',
+          });
+        } else {
+          callback({
+            statusCode: res.statusCode || 500,
+            headers: responseHeaders,
+          });
+        }
       } catch (err) {
         console.error('  ✗ Error processing response:', (err as Error).message);
         callback({
           statusCode: 500,
-          headers: {},
-          body: 'Internal Server Error',
+          headers: { 'content-type': 'text/plain' },
+          body: Buffer.from('Internal Server Error').toString('base64'),
+          bodyEncoding: 'base64',
         });
       }
     });
 
     res.on('error', (err: Error) => {
       console.error('  ✗ Response error:', err.message);
-      callback({
-        statusCode: 502,
-        headers: {},
-        body: `Error reading response: ${err.message}`,
-      });
+      callback(plainTextResponse(502, `Error reading response: ${err.message}`));
     });
   });
 
@@ -116,7 +117,6 @@ export function forwardToLocal(
       `  ✗ Error connecting to localhost:${localPort} - ${err.message}`
     );
 
-    // Provide helpful error messages
     let errorMessage = `Error connecting to local server: ${err.message}`;
     let statusCode = 502;
 
@@ -131,37 +131,35 @@ export function forwardToLocal(
       statusCode = 502;
     }
 
-    callback({
-      statusCode,
-      headers: { 'content-type': 'text/plain' },
-      body: errorMessage,
-    });
+    callback(plainTextResponse(statusCode, errorMessage));
   });
 
   req.on('timeout', () => {
     console.error(`  ✗ Request timeout after ${DEFAULT_PROXY_TIMEOUT}ms`);
     req.destroy();
-    callback({
-      statusCode: 504,
-      headers: {},
-      body: 'Gateway Timeout: Local server took too long to respond',
-    });
+    callback(
+      plainTextResponse(504, 'Gateway Timeout: Local server took too long to respond')
+    );
   });
 
-  // Write request body if present
   if (requestBody) {
     try {
       req.write(requestBody);
     } catch (err) {
       console.error('  ✗ Error writing request body:', (err as Error).message);
-      callback({
-        statusCode: 500,
-        headers: {},
-        body: 'Internal Server Error',
-      });
+      callback(plainTextResponse(500, 'Internal Server Error'));
       return;
     }
   }
 
   req.end();
+}
+
+function plainTextResponse(statusCode: number, message: string): ProxyResponse {
+  return {
+    statusCode,
+    headers: { 'content-type': 'text/plain' },
+    body: Buffer.from(message).toString('base64'),
+    bodyEncoding: 'base64',
+  };
 }

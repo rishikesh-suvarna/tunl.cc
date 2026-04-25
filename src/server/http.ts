@@ -2,7 +2,11 @@ import crypto from 'crypto';
 import fs from 'fs';
 import { IncomingMessage, ServerResponse } from 'http';
 import path from 'path';
-import { DEFAULT_TIMEOUT, MessageType } from '../shared/constants';
+import {
+  DEFAULT_TIMEOUT,
+  MAX_BODY_SIZE,
+  MessageType,
+} from '../shared/constants';
 import { RequestMessage, ServerConfig } from '../shared/types';
 import { TunnelManager } from './tunnel-manager';
 import { extractSubdomain } from './utils/subdomain';
@@ -132,13 +136,25 @@ function forwardRequest(
 ): void {
   const requestId = crypto.randomBytes(16).toString('hex');
   const chunks: Buffer[] = [];
+  let bytesReceived = 0;
+  let rejected = false;
   const startTime = Date.now();
 
   req.on('data', (chunk: Buffer) => {
+    if (rejected) return;
+    bytesReceived += chunk.length;
+    if (bytesReceived > MAX_BODY_SIZE) {
+      rejected = true;
+      res.writeHead(413, { 'Content-Type': 'text/plain' });
+      res.end(`Request body too large (max ${MAX_BODY_SIZE} bytes)`);
+      req.destroy();
+      return;
+    }
     chunks.push(chunk);
   });
 
   req.on('end', async () => {
+    if (rejected) return;
     const bodyBuffer = Buffer.concat(chunks);
     const body =
       bodyBuffer.length > 0 ? bodyBuffer.toString('base64') : undefined;
@@ -149,7 +165,8 @@ function forwardRequest(
       method: req.method || 'GET',
       path: req.url || '/',
       headers: req.headers,
-      body: body,
+      body,
+      bodyEncoding: body ? 'base64' : undefined,
     };
 
     const timeout = setTimeout(() => {

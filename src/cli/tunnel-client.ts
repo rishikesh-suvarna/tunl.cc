@@ -1,5 +1,9 @@
 import WebSocket from 'ws';
-import { MESSAGE_TYPES, MessageType } from '../shared/constants';
+import {
+  MAX_WS_MESSAGE_SIZE,
+  MESSAGE_TYPES,
+  MessageType,
+} from '../shared/constants';
 import {
   ErrorMessage,
   Message,
@@ -78,7 +82,9 @@ export class TunnelClient {
         console.log('Using API key for authentication');
       }
 
-      this.ws = new WebSocket(this.tunnelServer);
+      this.ws = new WebSocket(this.tunnelServer, {
+        maxPayload: MAX_WS_MESSAGE_SIZE,
+      });
 
       // Connection timeout
       const connectionTimeout = setTimeout(() => {
@@ -354,6 +360,7 @@ export class TunnelClient {
         statusCode: response.statusCode,
         headers: response.headers,
         body: response.body,
+        bodyEncoding: response.bodyEncoding,
       };
 
       const duration = Date.now() - startTime;

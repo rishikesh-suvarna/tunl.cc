@@ -4,6 +4,7 @@ import http from 'http';
 import WebSocket from 'ws';
 import { BASE_DOMAIN, HTTPS, PORT } from '../config/app.config';
 import { testConnection } from '../lib/db';
+import { MAX_WS_MESSAGE_SIZE } from '../shared/constants';
 import { ServerConfig } from '../shared/types';
 import { gracefulShutdown } from './graceful-shutdown';
 import { handleTunnelRequest } from './http';
@@ -33,7 +34,10 @@ async function startServer() {
     handleTunnelRequest(req, res, tunnelManager, config);
   });
 
-  const wss = new WebSocket.Server({ server });
+  const wss = new WebSocket.Server({
+    server,
+    maxPayload: MAX_WS_MESSAGE_SIZE,
+  });
 
   setupWebSocketServer(wss, tunnelManager, config);
 
