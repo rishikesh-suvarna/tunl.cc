@@ -189,7 +189,7 @@ async function handleRegister(
     const errorMsg: ErrorMessage = {
       type: MessageType.ERROR,
       message:
-        'Invalid subdomain. Must be 3-63 characters, alphanumeric or hyphens, and not reserved or profane.',
+        'Invalid subdomain. Must be 3-63 characters, alphanumeric or hyphens, and must not be reserved, profane, or impersonate a known brand.',
     };
     ws.send(JSON.stringify(errorMsg));
     ws.close(1008, 'Invalid subdomain');

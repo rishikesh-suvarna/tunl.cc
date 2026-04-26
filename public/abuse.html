@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Report Abuse - tunl.cc</title>
+  <meta name="description"
+    content="Report phishing, malware, illegal content, or other abuse on tunl.cc. We respond to verified reports promptly.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://tunl.cc/abuse">
+
+  <link rel="icon" type="image/png" href="/assets/images/common/favicon.ico">
+  <meta name="theme-color" content="#0B0326">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#0B0326',
+            secondary: '#C796FF',
+          },
+          fontFamily: {
+            sans: ['Manrope', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+</head>
+
+<body class="bg-primary text-white font-sans antialiased min-h-screen">
+  <header class="container mx-auto px-6 py-8">
+    <a href="/" class="text-2xl font-bold text-secondary hover:text-secondary/80 transition-colors">tunl.cc</a>
+  </header>
+
+  <main class="container mx-auto px-6 py-12 max-w-3xl">
+    <h1 class="text-4xl md:text-5xl font-bold mb-4">Report Abuse</h1>
+    <p class="text-gray-300 text-lg mb-12">
+      tunl.cc is a free tool for developers to expose local servers for legitimate testing.
+      Misuse — phishing, malware distribution, illegal content, copyright infringement,
+      or any activity prohibited by our Terms of Service — is grounds for immediate
+      tunnel termination and, where appropriate, account ban and law-enforcement referral.
+    </p>
+
+    <section class="mb-12">
+      <h2 class="text-2xl font-semibold mb-4 text-secondary">How to report</h2>
+      <p class="mb-4">
+        Email
+        <a href="mailto:abuse@tunl.cc" class="text-secondary underline hover:text-secondary/80">abuse@tunl.cc</a>
+        with the details below. We aim to respond within 48 hours and act on verified
+        reports as soon as we can confirm the abuse.
+      </p>
+      <div class="bg-secondary/10 border border-secondary/30 rounded-lg p-6 text-gray-200 space-y-2">
+        <p><strong>Required:</strong></p>
+        <ul class="list-disc list-inside space-y-1 ml-2">
+          <li>The full URL(s) of the abusing tunnel (e.g., <code
+              class="bg-primary/40 px-2 py-0.5 rounded">https://example.tunl.cc/path</code>)</li>
+          <li>Date and time you observed the abuse (with timezone)</li>
+          <li>What you observed — phishing, malware, illegal content, etc.</li>
+          <li>Evidence: screenshots, headers, payload samples, or links to threat-intel
+            entries (PhishTank, URLhaus, VirusTotal)</li>
+        </ul>
+        <p class="pt-2"><strong>Helpful but optional:</strong> your name and organisation,
+          so we can follow up if we need clarification.</p>
+      </div>
+    </section>
+
+    <section class="mb-12">
+      <h2 class="text-2xl font-semibold mb-4 text-secondary">DMCA / copyright</h2>
+      <p class="mb-2">
+        For copyright takedown notices, send a complete DMCA notice to
+        <a href="mailto:abuse@tunl.cc" class="text-secondary underline hover:text-secondary/80">abuse@tunl.cc</a>
+        with subject line <code class="bg-primary/40 px-2 py-0.5 rounded">DMCA Notice</code>.
+        Include all elements required by 17 U.S.C. § 512(c)(3): identification of the work,
+        identification of the infringing material (with the tunl.cc URL), your contact
+        information, the good-faith and accuracy statements, and your physical or
+        electronic signature.
+      </p>
+      <p class="text-sm text-gray-400">
+        Counter-notices are accepted at the same address.
+      </p>
+    </section>
+
+    <section class="mb-12">
+      <h2 class="text-2xl font-semibold mb-4 text-secondary">Law enforcement</h2>
+      <p>
+        Law enforcement requests (subpoenas, preservation requests, emergency disclosure
+        requests) should be sent to
+        <a href="mailto:abuse@tunl.cc" class="text-secondary underline hover:text-secondary/80">abuse@tunl.cc</a>
+        from an official agency email address. We retain tunnel registration metadata
+        (subdomain, source IP, timestamps) for 90 days.
+      </p>
+    </section>
+
+    <section>
+      <h2 class="text-2xl font-semibold mb-4 text-secondary">What we cannot help with</h2>
+      <ul class="list-disc list-inside space-y-1 text-gray-300 ml-2">
+        <li>Disputes between tunnel operators and their visitors — content is owned and
+          served by the tunnel operator, not by tunl.cc.</li>
+        <li>Lost or forgotten subdomains. Subdomains are ephemeral and not reservable.</li>
+        <li>Recovering data sent through a tunnel. We do not log request or response bodies.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="container mx-auto px-6 py-12 text-center text-gray-400 border-t border-secondary/20 mt-12">
+    <p>
+      <a href="/" class="text-secondary hover:text-secondary/80 transition-colors">Home</a>
+      &middot;
+      <a href="/abuse" class="text-secondary hover:text-secondary/80 transition-colors">Report abuse</a>
+    </p>
+    <p class="mt-2 text-sm">Open source and free forever</p>
+  </footer>
+</body>
+
+</html>
