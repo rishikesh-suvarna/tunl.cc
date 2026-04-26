@@ -4,6 +4,7 @@ export const SUBDOMAIN_LENGTH = 8;
 
 export const MAX_BODY_SIZE = 5 * 1024 * 1024;
 export const MAX_WS_MESSAGE_SIZE = 10 * 1024 * 1024;
+export const MAX_MESSAGES_PER_SECOND = 1000;
 
 export enum MessageType {
   REGISTER = 'register',

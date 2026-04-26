@@ -5,6 +5,7 @@ import { db } from '../lib/db';
 import { redisTunnel } from '../lib/redis';
 import { SUBDOMAIN_LENGTH } from '../shared/constants';
 import { BodyEncoding, PendingRequest, RegisterResult } from '../shared/types';
+import { bodyByteLength, buildHttpResponse } from './response-builder';
 
 export class TunnelManager {
   private activeTunnels: Map<string, { ws: WebSocket }>;
@@ -160,34 +161,15 @@ export class TunnelManager {
     clearTimeout(pending.timeout);
     const { res, metadata } = pending;
 
-    const responseHeaders: any = {};
-    if (headers) {
-      Object.entries(headers).forEach(([k, v]) => {
-        if (v !== undefined) {
-          responseHeaders[k.toLowerCase()] = v;
-        }
-      });
-    }
-
-    let bodyToWrite: Buffer | string = '';
-    if (body) {
-      bodyToWrite =
-        bodyEncoding === 'base64' ? Buffer.from(body, 'base64') : body;
-    }
-
-    res.writeHead(statusCode || 200, responseHeaders);
-    res.end(bodyToWrite);
+    const built = buildHttpResponse(statusCode, headers, body, bodyEncoding);
+    res.writeHead(built.statusCode, built.headers);
+    res.end(built.body);
 
     if (metadata) {
-      const responseSize =
-        bodyToWrite instanceof Buffer
-          ? bodyToWrite.length
-          : Buffer.byteLength(bodyToWrite);
-
       this.incrementRequestCount(
         metadata.subdomain,
         metadata.requestSize,
-        responseSize
+        bodyByteLength(built.body)
       );
     }
 

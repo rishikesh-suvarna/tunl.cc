@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { IncomingMessage } from 'http';
 import WebSocket from 'ws';
 import {
+  MAX_MESSAGES_PER_SECOND,
   MAX_WS_MESSAGE_SIZE,
   MESSAGE_TYPES,
   MessageType,
@@ -44,11 +45,12 @@ export function setupWebSocketServer(
       ws.terminate();
     }, 10000);
 
-    // Message rate limiting
+    // Message rate limiting (per-second window)
     let messageCount = 0;
     const messageRateLimitWindow = setInterval(() => {
       messageCount = 0;
     }, 1000);
+    const messageLimit = MAX_MESSAGES_PER_SECOND;
 
     // Handle pong responses from client (when server sends ping)
     ws.on('pong', () => {
@@ -66,10 +68,11 @@ export function setupWebSocketServer(
     logger.info(`Client connected from ${ip}`);
 
     ws.on('message', (data: WebSocket.Data) => {
-      // Rate limit messages
       messageCount++;
-      if (messageCount > 100) {
-        logger.warn('Message rate limit exceeded');
+      if (messageCount > messageLimit) {
+        logger.warn(
+          `Message rate limit exceeded (${messageCount} > ${messageLimit}/s)`
+        );
         ws.close(1008, 'Rate limit exceeded');
         return;
       }

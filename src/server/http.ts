@@ -8,6 +8,7 @@ import {
   MessageType,
 } from '../shared/constants';
 import { RequestMessage, ServerConfig } from '../shared/types';
+import { collectRequestBody } from './body-collector';
 import { TunnelManager } from './tunnel-manager';
 import { extractSubdomain } from './utils/subdomain';
 
@@ -34,7 +35,13 @@ export function handleTunnelRequest(
     return;
   }
 
-  forwardRequest(req, res, tunnel, tunnelManager, subdomain);
+  forwardRequest(req, res, tunnel, tunnelManager, subdomain).catch((err) => {
+    console.error('Unexpected error forwarding request:', err);
+    if (!res.headersSent) {
+      res.writeHead(500, { 'Content-Type': 'text/plain' });
+      res.end('Internal Server Error');
+    }
+  });
 }
 
 function serveLandingPage(
@@ -127,79 +134,57 @@ function serveStaticFile(url: string, res: ServerResponse): void {
   });
 }
 
-function forwardRequest(
+async function forwardRequest(
   req: IncomingMessage,
   res: ServerResponse,
   tunnel: { ws: any },
   tunnelManager: TunnelManager,
   subdomain: string
-): void {
+): Promise<void> {
   const requestId = crypto.randomBytes(16).toString('hex');
-  const chunks: Buffer[] = [];
-  let bytesReceived = 0;
-  let rejected = false;
   const startTime = Date.now();
 
-  req.on('data', (chunk: Buffer) => {
-    if (rejected) return;
-    bytesReceived += chunk.length;
-    if (bytesReceived > MAX_BODY_SIZE) {
-      rejected = true;
-      res.writeHead(413, { 'Content-Type': 'text/plain' });
-      res.end(`Request body too large (max ${MAX_BODY_SIZE} bytes)`);
-      req.destroy();
-      return;
-    }
-    chunks.push(chunk);
-  });
+  const bodyBuffer = await collectRequestBody(req, res, MAX_BODY_SIZE);
+  if (bodyBuffer === null) return;
 
-  req.on('end', async () => {
-    if (rejected) return;
-    const bodyBuffer = Buffer.concat(chunks);
-    const body =
-      bodyBuffer.length > 0 ? bodyBuffer.toString('base64') : undefined;
+  const body =
+    bodyBuffer.length > 0 ? bodyBuffer.toString('base64') : undefined;
 
-    const requestData: RequestMessage = {
-      type: MessageType.REQUEST,
-      requestId,
-      method: req.method || 'GET',
-      path: req.url || '/',
-      headers: req.headers,
-      body,
-      bodyEncoding: body ? 'base64' : undefined,
-    };
+  const requestData: RequestMessage = {
+    type: MessageType.REQUEST,
+    requestId,
+    method: req.method || 'GET',
+    path: req.url || '/',
+    headers: req.headers,
+    body,
+    bodyEncoding: body ? 'base64' : undefined,
+  };
 
-    const timeout = setTimeout(() => {
-      tunnelManager.timeoutRequest(requestId);
-    }, DEFAULT_TIMEOUT);
+  const timeout = setTimeout(() => {
+    tunnelManager.timeoutRequest(requestId);
+  }, DEFAULT_TIMEOUT);
 
-    // Store request metadata for metrics tracking
-    const requestMetadata = {
-      subdomain,
-      method: req.method || 'GET',
-      path: req.url || '/',
-      requestSize: bodyBuffer.length,
-      startTime,
-      userAgent: req.headers['user-agent'],
-      ip: req.socket.remoteAddress || 'unknown',
-    };
+  const requestMetadata = {
+    subdomain,
+    method: req.method || 'GET',
+    path: req.url || '/',
+    requestSize: bodyBuffer.length,
+    startTime,
+    userAgent: req.headers['user-agent'],
+    ip: req.socket.remoteAddress || 'unknown',
+  };
 
-    tunnelManager.addPendingRequest(requestId, res, timeout, requestMetadata);
+  tunnelManager.addPendingRequest(requestId, res, timeout, requestMetadata);
 
-    try {
-      tunnel.ws.send(JSON.stringify(requestData));
-    } catch (err) {
-      console.error('Error forwarding request:', err);
-      clearTimeout(timeout);
-      tunnelManager.pendingRequestsMap.delete(requestId);
+  try {
+    tunnel.ws.send(JSON.stringify(requestData));
+  } catch (err) {
+    console.error('Error forwarding request:', err);
+    clearTimeout(timeout);
+    tunnelManager.pendingRequestsMap.delete(requestId);
+    if (!res.headersSent) {
       res.writeHead(502, { 'Content-Type': 'text/plain' });
       res.end('Bad Gateway');
     }
-  });
-
-  req.on('error', (err) => {
-    console.error('Request error:', err);
-    res.writeHead(400, { 'Content-Type': 'text/plain' });
-    res.end('Bad Request');
-  });
+  }
 }
