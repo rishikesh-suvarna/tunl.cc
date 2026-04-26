@@ -6,45 +6,11 @@ A simple tunneling service to expose your localhost to the internet.
 
 ## Installation
 
-### via NPM
-
 ```bash
 npm install -g tunl.cc
 ```
 
-### via Binary
-
-**Linux:**
-
-```bash
-curl -L https://github.com/rishikesh-suvarna/tunl.cc/releases/latest/download/tunl-linux-x64 -o tunl
-chmod +x tunl
-sudo mv tunl /usr/local/bin/tunl
-```
-
-**macOS (Intel):**
-
-```bash
-curl -L https://github.com/rishikesh-suvarna/tunl.cc/releases/latest/download/tunl-macos-x64 -o tunl
-xattr -d com.apple.quarantine tunl
-chmod +x tunl
-sudo mv tunl /usr/local/bin/tunl
-```
-
-**macOS (Apple Silicon):**
-
-```bash
-curl -L https://github.com/rishikesh-suvarna/tunl.cc/releases/latest/download/tunl-macos-arm64 -o tunl
-xattr -d com.apple.quarantine tunl
-chmod +x tunl
-sudo mv tunl /usr/local/bin/tunl
-```
-
-**Windows:**
-
-```powershell
-Invoke-WebRequest -Uri "https://github.com/rishikesh-suvarna/tunl.cc/releases/latest/download/tunl-win-x64.exe" -OutFile "tunl.exe"
-```
+Requires Node.js 18 or newer.
 
 ## Usage
 
