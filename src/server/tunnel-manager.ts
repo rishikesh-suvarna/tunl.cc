@@ -120,6 +120,20 @@ export class TunnelManager {
     }
   }
 
+  async kill(subdomain: string): Promise<boolean> {
+    const tunnel = this.activeTunnels.get(subdomain);
+    if (!tunnel) return false;
+
+    try {
+      tunnel.ws.close(1000, 'Disconnected by admin');
+    } catch (err) {
+      console.error(`Error closing WebSocket for ${subdomain}:`, err);
+    }
+
+    await this.unregister(subdomain);
+    return true;
+  }
+
   getTunnel(subdomain: string): { ws: WebSocket } | undefined {
     return this.activeTunnels.get(subdomain);
   }

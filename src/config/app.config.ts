@@ -21,6 +21,7 @@ export const BASE_DOMAIN = getEnvVar('BASE_DOMAIN', 'localhost:9000');
 export const HTTPS = getEnvVar('HTTPS', 'false') === 'true';
 export const DEBUG = getEnvVar('DEBUG', 'false') === 'true';
 export const TUNNEL_SERVER = getEnvVar('TUNNEL_SERVER', 'wss://tunl.cc');
+export const ADMIN_SECRET = getEnvVar('ADMIN_SECRET', '');
 
 export const DB_HOST = getEnvVar('DB_HOST', 'localhost');
 export const DB_PORT = parseInt(getEnvVar('DB_PORT', '5432'), 10);

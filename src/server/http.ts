@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import { IncomingMessage, ServerResponse } from 'http';
 import path from 'path';
+import { ADMIN_SECRET } from '../config/app.config';
 import {
   DEFAULT_TIMEOUT,
   MAX_BODY_SIZE,
@@ -63,6 +64,13 @@ function serveLandingPage(
     return;
   }
 
+  // Admin: DELETE /admin/tunnels/:subdomain
+  const adminPath = url.split('?')[0] || '';
+  if (adminPath.startsWith('/admin/tunnels/') && req.method === 'DELETE') {
+    handleAdminKillTunnel(req, res, tunnelManager, adminPath);
+    return;
+  }
+
   // Serve homepage
   if (url === '/' || url === '/index.html') {
     const htmlPath = path.join(__dirname, '../../public/index.html');
@@ -88,9 +96,18 @@ function serveLandingPage(
     return;
   }
 
-  // Abuse reporting page
-  if (url === '/abuse' || url === '/abuse.html') {
-    const htmlPath = path.join(__dirname, '../../public/abuse.html');
+  // Static legal/contact pages
+  const staticPages: Record<string, string> = {
+    '/abuse': 'abuse.html',
+    '/abuse.html': 'abuse.html',
+    '/terms': 'terms.html',
+    '/terms.html': 'terms.html',
+    '/privacy': 'privacy.html',
+    '/privacy.html': 'privacy.html',
+  };
+  const staticPage = staticPages[url];
+  if (staticPage) {
+    const htmlPath = path.join(__dirname, '../../public', staticPage);
     fs.readFile(htmlPath, (err, data) => {
       if (err) {
         res.writeHead(500, { 'Content-Type': 'text/plain' });
@@ -106,6 +123,57 @@ function serveLandingPage(
   // 404 for other routes
   res.writeHead(404, { 'Content-Type': 'text/plain' });
   res.end('Not Found');
+}
+
+function handleAdminKillTunnel(
+  req: IncomingMessage,
+  res: ServerResponse,
+  tunnelManager: TunnelManager,
+  url: string
+): void {
+  // Endpoint is disabled unless ADMIN_SECRET is configured. Return 404 so
+  // its existence isn't leaked on unconfigured deployments.
+  if (!ADMIN_SECRET) {
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    res.end('Not Found');
+    return;
+  }
+
+  const header = req.headers.authorization || '';
+  const provided = header.replace(/^Bearer\s+/i, '');
+  const expected = ADMIN_SECRET;
+  const providedBuf = Buffer.from(provided);
+  const expectedBuf = Buffer.from(expected);
+
+  if (
+    providedBuf.length !== expectedBuf.length ||
+    !crypto.timingSafeEqual(providedBuf, expectedBuf)
+  ) {
+    res.writeHead(401, { 'Content-Type': 'text/plain' });
+    res.end('Unauthorized');
+    return;
+  }
+
+  const subdomain = decodeURIComponent(url.slice('/admin/tunnels/'.length));
+  if (!subdomain || subdomain.includes('/')) {
+    res.writeHead(400, { 'Content-Type': 'text/plain' });
+    res.end('Bad Request');
+    return;
+  }
+
+  tunnelManager
+    .kill(subdomain)
+    .then((killed) => {
+      res.writeHead(killed ? 200 : 404, {
+        'Content-Type': 'application/json',
+      });
+      res.end(JSON.stringify({ killed, subdomain }));
+    })
+    .catch((err) => {
+      console.error('Error killing tunnel:', err);
+      res.writeHead(500, { 'Content-Type': 'text/plain' });
+      res.end('Internal Server Error');
+    });
 }
 
 async function handleStatsRequest(
